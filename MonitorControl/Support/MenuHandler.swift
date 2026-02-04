@@ -53,14 +53,27 @@ class MenuHandler: NSMenu, NSMenuDelegate {
       displays.append(contentsOf: DisplayManager.shared.getAppleDisplays())
     }
     displays.append(contentsOf: DisplayManager.shared.getOtherDisplays())
-    displays = DisplayManager.shared.sortDisplaysByFriendlyName()
+    displays.sort { lhs, rhs in
+      let lhsTitle = lhs.readPrefAsString(key: .friendlyName).isEmpty ? lhs.name : lhs.readPrefAsString(key: .friendlyName)
+      let rhsTitle = rhs.readPrefAsString(key: .friendlyName).isEmpty ? rhs.name : rhs.readPrefAsString(key: .friendlyName)
+      return lhsTitle.localizedStandardCompare(rhsTitle) == .orderedDescending
+    }
     let relevant = prefs.integer(forKey: PrefKey.multiSliders.rawValue) == MultiSliders.relevant.rawValue
     let combine = prefs.integer(forKey: PrefKey.multiSliders.rawValue) == MultiSliders.combine.rawValue
-    let numOfDisplays = displays.filter { !$0.isDummy }.count
+    let isHidden: (Display) -> Bool = { display in
+      if display.isDummy { return true }
+      if let other = display as? OtherDisplay, other.isDiscouraged { return true }
+      // Hide phantom displays whose name is just a numeric ID (e.g. "100012586")
+      // These are displays where macOS couldn't read an EDID product name
+      let baseName = display.name.replacingOccurrences(of: #" \(\d+\)$"#, with: "", options: .regularExpression)
+      if !baseName.isEmpty, baseName.allSatisfy({ $0.isNumber }) { return true }
+      return false
+    }
+    let numOfDisplays = displays.filter { !isHidden($0) }.count
     if numOfDisplays != 0 {
       let asSubMenu: Bool = (displays.count > 3 && !relevant && !combine && app.macOS10()) ? true : false
       var iterator = 0
-      for display in displays where (!relevant || DisplayManager.resolveEffectiveDisplayID(display.identifier) == DisplayManager.resolveEffectiveDisplayID(currentDisplay!.identifier)) && !display.isDummy {
+      for display in displays where (!relevant || DisplayManager.resolveEffectiveDisplayID(display.identifier) == DisplayManager.resolveEffectiveDisplayID(currentDisplay!.identifier)) && !isHidden(display) {
         iterator += 1
         if !relevant, !combine, iterator != 1, app.macOS10() {
           self.insertItem(NSMenuItem.separator(), at: 0)
@@ -101,7 +114,7 @@ class MenuHandler: NSMenu, NSMenuDelegate {
     }
   }
 
-  func addDisplayMenuBlock(addedSliderHandlers: [SliderHandler], blockName: String, monitorSubMenu: NSMenu, numOfDisplays: Int, asSubMenu: Bool) {
+  func addDisplayMenuBlock(addedSliderHandlers: [SliderHandler], blockName: String, monitorSubMenu: NSMenu, numOfDisplays: Int, asSubMenu: Bool, display: Display? = nil) {
     if numOfDisplays > 1, prefs.integer(forKey: PrefKey.multiSliders.rawValue) != MultiSliders.relevant.rawValue, !DEBUG_MACOS10, #available(macOS 11.0, *) {
       class BlockView: NSView {
         override func draw(_: NSRect) {
@@ -149,6 +162,43 @@ class MenuHandler: NSMenu, NSMenuDelegate {
       if let blockNameView = blockNameView {
         blockNameView.setFrameOrigin(NSPoint(x: margin + 13, y: contentHeight - 8))
         itemView.addSubview(blockNameView)
+        // Add input/power icon buttons in the block header, right-aligned with the name
+        if let otherDisplay = display as? OtherDisplay, !otherDisplay.isSw() {
+          let iconSize = CGFloat(13)
+          let iconSpacing = CGFloat(5)
+          let rightPadding = margin + 13  // match the block's inner right edge
+          var iconX = itemView.frame.width - rightPadding - iconSize
+          let iconY = blockNameView.frame.origin.y + (blockNameView.frame.height - iconSize) / 2
+          let showPower = !otherDisplay.readPrefAsBool(key: .unavailableDDC, for: .powerMode)
+          let showInput = !otherDisplay.readPrefAsBool(key: .unavailableDDC, for: .inputSelect)
+          if showPower {
+            let powerBtn = NSButton(frame: NSRect(x: iconX, y: iconY, width: iconSize, height: iconSize))
+            powerBtn.bezelStyle = .regularSquare
+            powerBtn.isBordered = false
+            powerBtn.setButtonType(.momentaryChange)
+            powerBtn.image = NSImage(systemSymbolName: "power", accessibilityDescription: "Power")
+            powerBtn.imageScaling = .scaleProportionallyUpOrDown
+            powerBtn.alphaValue = 0.35
+            powerBtn.tag = Int(otherDisplay.identifier)
+            powerBtn.action = #selector(showPowerPopup(_:))
+            powerBtn.target = self
+            itemView.addSubview(powerBtn)
+            iconX -= (iconSize + iconSpacing)
+          }
+          if showInput {
+            let inputBtn = NSButton(frame: NSRect(x: iconX, y: iconY, width: iconSize, height: iconSize))
+            inputBtn.bezelStyle = .regularSquare
+            inputBtn.isBordered = false
+            inputBtn.setButtonType(.momentaryChange)
+            inputBtn.image = NSImage(systemSymbolName: "rectangle.connected.to.line.below", accessibilityDescription: "Input Source")
+            inputBtn.imageScaling = .scaleProportionallyUpOrDown
+            inputBtn.alphaValue = 0.35
+            inputBtn.tag = Int(otherDisplay.identifier)
+            inputBtn.action = #selector(showInputPopup(_:))
+            inputBtn.target = self
+            itemView.addSubview(inputBtn)
+          }
+        }
       }
       let item = NSMenuItem()
       item.view = itemView
@@ -159,12 +209,19 @@ class MenuHandler: NSMenu, NSMenuDelegate {
       for addedSliderHandler in addedSliderHandlers {
         self.addSliderItem(monitorSubMenu: monitorSubMenu, sliderHandler: addedSliderHandler)
       }
+      // For macOS 10 / non-block layout, add input/power as submenu items
+      if let otherDisplay = display as? OtherDisplay, !otherDisplay.isSw() {
+        self.addInputAndPowerMenuItems(for: otherDisplay, to: monitorSubMenu)
+      }
     }
     self.appendMenuHeader(friendlyName: blockName, monitorSubMenu: monitorSubMenu, asSubMenu: asSubMenu, numOfDisplays: numOfDisplays)
   }
 
   func addCombinedDisplayMenuBlock() {
     if let sliderHandler = self.combinedSliderHandler[.audioSpeakerVolume] {
+      self.addSliderItem(monitorSubMenu: self, sliderHandler: sliderHandler)
+    }
+    if let sliderHandler = self.combinedSliderHandler[.colorTemperatureRequest] {
       self.addSliderItem(monitorSubMenu: self, sliderHandler: sliderHandler)
     }
     if let sliderHandler = self.combinedSliderHandler[.contrast] {
@@ -189,17 +246,166 @@ class MenuHandler: NSMenu, NSMenuDelegate {
       let title = NSLocalizedString("Contrast", comment: "Shown in menu")
       addedSliderHandlers.append(self.setupMenuSliderHandler(command: .contrast, display: display, title: title))
     }
+    display.sliderHandler[.colorTemperatureRequest] = nil
+    if let otherDisplay = display as? OtherDisplay, !otherDisplay.isSw(), !display.readPrefAsBool(key: .unavailableDDC, for: .colorTemperatureRequest), prefs.bool(forKey: PrefKey.showColorTemperature.rawValue) {
+      let title = NSLocalizedString("Color Temperature", comment: "Shown in menu")
+      addedSliderHandlers.append(self.setupMenuSliderHandler(command: .colorTemperatureRequest, display: display, title: title))
+    }
     display.sliderHandler[.brightness] = nil
     if !display.readPrefAsBool(key: .unavailableDDC, for: .brightness), !prefs.bool(forKey: PrefKey.hideBrightness.rawValue) {
       let title = NSLocalizedString("Brightness", comment: "Shown in menu")
       addedSliderHandlers.append(self.setupMenuSliderHandler(command: .brightness, display: display, title: title))
     }
     if prefs.integer(forKey: PrefKey.multiSliders.rawValue) != MultiSliders.combine.rawValue {
-      self.addDisplayMenuBlock(addedSliderHandlers: addedSliderHandlers, blockName: display.readPrefAsString(key: .friendlyName) != "" ? display.readPrefAsString(key: .friendlyName) : display.name, monitorSubMenu: monitorSubMenu, numOfDisplays: numOfDisplays, asSubMenu: asSubMenu)
+      self.addDisplayMenuBlock(addedSliderHandlers: addedSliderHandlers, blockName: display.readPrefAsString(key: .friendlyName) != "" ? display.readPrefAsString(key: .friendlyName) : display.name, monitorSubMenu: monitorSubMenu, numOfDisplays: numOfDisplays, asSubMenu: asSubMenu, display: display)
     }
     if addedSliderHandlers.count > 0, prefs.integer(forKey: PrefKey.menuIcon.rawValue) == MenuIcon.sliderOnly.rawValue {
       app.updateStatusItemVisibility(true)
     }
+  }
+
+  // MARK: - Input Switching & Power Control Menu Items
+
+  func addInputAndPowerMenuItems(for display: OtherDisplay, to targetMenu: NSMenu) {
+    guard !DEBUG_MACOS10, #available(macOS 11.0, *) else { return }
+
+    let showInputSwitching = !display.readPrefAsBool(key: .unavailableDDC, for: .inputSelect)
+    let showPowerControl = !display.readPrefAsBool(key: .unavailableDDC, for: .powerMode)
+
+    guard showInputSwitching || showPowerControl else { return }
+
+    // Use display's friendly name (or raw name) so items are identifiable per-display
+    let displayName = display.readPrefAsString(key: .friendlyName) != "" ? display.readPrefAsString(key: .friendlyName) : display.name
+
+    // Input Source submenu
+    if showInputSwitching {
+      let inputItem = NSMenuItem()
+      inputItem.title = "\(NSLocalizedString("Input Source", comment: "Shown in menu")) — \(displayName)"
+      let inputMenu = NSMenu()
+      for inputSource in Command.InputSource.common {
+        let sourceItem = NSMenuItem()
+        sourceItem.title = inputSource.displayName
+        sourceItem.tag = Int(inputSource.rawValue)
+        sourceItem.representedObject = display
+        sourceItem.action = #selector(inputSourceSelected(_:))
+        sourceItem.target = self
+        // Mark current input if known
+        if let lastInput = display.getLastInputSource(), lastInput == inputSource {
+          sourceItem.state = .on
+        }
+        inputMenu.addItem(sourceItem)
+      }
+      // Add "All Inputs" submenu for less common inputs
+      inputMenu.addItem(NSMenuItem.separator())
+      let allInputsItem = NSMenuItem()
+      allInputsItem.title = NSLocalizedString("All Inputs", comment: "Shown in menu")
+      let allInputsMenu = NSMenu()
+      for inputSource in Command.InputSource.allCases where !Command.InputSource.common.contains(inputSource) {
+        let sourceItem = NSMenuItem()
+        sourceItem.title = inputSource.displayName
+        sourceItem.tag = Int(inputSource.rawValue)
+        sourceItem.representedObject = display
+        sourceItem.action = #selector(inputSourceSelected(_:))
+        sourceItem.target = self
+        allInputsMenu.addItem(sourceItem)
+      }
+      allInputsItem.submenu = allInputsMenu
+      inputMenu.addItem(allInputsItem)
+      inputItem.submenu = inputMenu
+      if !DEBUG_MACOS10, #available(macOS 11.0, *) {
+        inputItem.image = NSImage(systemSymbolName: "rectangle.connected.to.line.below", accessibilityDescription: "Input Source")
+      }
+      targetMenu.addItem(inputItem)
+    }
+
+    // Power control submenu
+    if showPowerControl {
+      let powerItem = NSMenuItem()
+      powerItem.title = "\(NSLocalizedString("Power", comment: "Shown in menu")) — \(displayName)"
+      let powerMenu = NSMenu()
+      for powerMode in [Command.PowerMode.on, .standby, .off] {
+        let modeItem = NSMenuItem()
+        modeItem.title = powerMode.displayName
+        modeItem.tag = Int(powerMode.rawValue)
+        modeItem.representedObject = display
+        modeItem.action = #selector(powerModeSelected(_:))
+        modeItem.target = self
+        powerMenu.addItem(modeItem)
+      }
+      powerItem.submenu = powerMenu
+      if !DEBUG_MACOS10, #available(macOS 11.0, *) {
+        powerItem.image = NSImage(systemSymbolName: "power", accessibilityDescription: "Power")
+      }
+      targetMenu.addItem(powerItem)
+    }
+  }
+
+  @objc func showInputPopup(_ sender: NSButton) {
+    guard let display = DisplayManager.shared.getOtherDisplays().first(where: { Int($0.identifier) == sender.tag }) else { return }
+    let menu = NSMenu()
+    for inputSource in Command.InputSource.common {
+      let sourceItem = NSMenuItem()
+      sourceItem.title = inputSource.displayName
+      sourceItem.tag = Int(inputSource.rawValue)
+      sourceItem.representedObject = display
+      sourceItem.action = #selector(inputSourceSelected(_:))
+      sourceItem.target = self
+      if let lastInput = display.getLastInputSource(), lastInput == inputSource {
+        sourceItem.state = .on
+      }
+      menu.addItem(sourceItem)
+    }
+    menu.addItem(NSMenuItem.separator())
+    let allInputsItem = NSMenuItem()
+    allInputsItem.title = NSLocalizedString("All Inputs", comment: "Shown in menu")
+    let allInputsMenu = NSMenu()
+    for inputSource in Command.InputSource.allCases where !Command.InputSource.common.contains(inputSource) {
+      let sourceItem = NSMenuItem()
+      sourceItem.title = inputSource.displayName
+      sourceItem.tag = Int(inputSource.rawValue)
+      sourceItem.representedObject = display
+      sourceItem.action = #selector(inputSourceSelected(_:))
+      sourceItem.target = self
+      allInputsMenu.addItem(sourceItem)
+    }
+    allInputsItem.submenu = allInputsMenu
+    menu.addItem(allInputsItem)
+    menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height), in: sender)
+  }
+
+  @objc func showPowerPopup(_ sender: NSButton) {
+    guard let display = DisplayManager.shared.getOtherDisplays().first(where: { Int($0.identifier) == sender.tag }) else { return }
+    let menu = NSMenu()
+    for powerMode in [Command.PowerMode.on, .standby, .off] {
+      let modeItem = NSMenuItem()
+      modeItem.title = powerMode.displayName
+      modeItem.tag = Int(powerMode.rawValue)
+      modeItem.representedObject = display
+      modeItem.action = #selector(powerModeSelected(_:))
+      modeItem.target = self
+      menu.addItem(modeItem)
+    }
+    menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height), in: sender)
+  }
+
+  @objc func inputSourceSelected(_ sender: NSMenuItem) {
+    guard let display = sender.representedObject as? OtherDisplay,
+          let inputSource = Command.InputSource(rawValue: UInt16(sender.tag)) else { return }
+    os_log("User selected input source: %{public}@", type: .info, inputSource.displayName)
+    display.setInputSource(inputSource)
+    // Update the menu checkmarks
+    if let parentMenu = sender.menu {
+      for item in parentMenu.items {
+        item.state = (item.tag == sender.tag) ? .on : .off
+      }
+    }
+  }
+
+  @objc func powerModeSelected(_ sender: NSMenuItem) {
+    guard let display = sender.representedObject as? OtherDisplay,
+          let powerMode = Command.PowerMode(rawValue: UInt16(sender.tag)) else { return }
+    os_log("User selected power mode: %{public}@", type: .info, powerMode.displayName)
+    display.setPowerMode(powerMode)
   }
 
   private func appendMenuHeader(friendlyName: String, monitorSubMenu: NSMenu, asSubMenu: Bool, numOfDisplays: Int) {

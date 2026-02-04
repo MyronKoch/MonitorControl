@@ -314,12 +314,18 @@ class DisplaysPrefsViewController: NSViewController, SettingsPane, NSTableViewDa
   }
 
   func updateDisplayListRowHeight() {
+    let displayCount = max(1, CGFloat(self.displays.count))
+    let padding: CGFloat = 15 + 30 // intercell spacing + header/footer
     if prefs.bool(forKey: PrefKey.showAdvancedSettings.rawValue) {
       self.displayList?.rowHeight = 520
-      self.constraintHeight?.constant = self.displayList.rowHeight + 15 + 30
+      // Show all displays (advanced mode rows are tall, cap at 2 visible to avoid huge window)
+      let visibleRows = min(displayCount, 2)
+      self.constraintHeight?.constant = self.displayList.rowHeight * visibleRows + padding
     } else {
       self.displayList?.rowHeight = 180
-      self.constraintHeight?.constant = self.displayList.rowHeight * 2 + 15 + 30
+      // Show all displays up to a reasonable max of 6 rows (~1110pt)
+      let visibleRows = min(displayCount, 6)
+      self.constraintHeight?.constant = self.displayList.rowHeight * visibleRows + padding
     }
   }
 }

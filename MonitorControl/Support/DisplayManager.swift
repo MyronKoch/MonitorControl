@@ -197,6 +197,10 @@ class DisplayManager {
         otherDisplay.setupCurrentAndMaxValues(command: .brightness, firstrun: firstrun)
         otherDisplay.brightnessSyncSourceValue = otherDisplay.readPrefAsFloat(for: .brightness)
       }
+      // Auto-detect DDC capabilities for input switching, power control, etc.
+      if firstrun, !otherDisplay.isSw(), prefs.integer(forKey: PrefKey.startupAction.rawValue) == StartupAction.read.rawValue {
+        otherDisplay.detectCapabilities()
+      }
     }
   }
 
