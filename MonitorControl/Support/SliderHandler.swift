@@ -321,9 +321,7 @@ class SliderHandler {
         slider.floatValue = value
       }
     }
-    if self.percentageBox == self.percentageBox {
-      self.percentageBox?.stringValue = "" + String(Int(value * 100)) + "%"
-    }
+    self.percentageBox?.stringValue = "" + String(Int(value * 100)) + "%"
     for display in self.displays {
       slider.setHighlightItem(display.identifier, value: value)
       if self.command == .brightness, let appleDisplay = display as? AppleDisplay {
@@ -379,9 +377,7 @@ class SliderHandler {
       } else {
         slider.setDisplayHighlightItems(false)
       }
-      if self.percentageBox == self.percentageBox {
-        self.percentageBox?.stringValue = "" + String(Int(value * 100)) + "%"
-      }
+      self.percentageBox?.stringValue = "" + String(Int(value * 100)) + "%"
     }
   }
 }

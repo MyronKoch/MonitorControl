@@ -48,6 +48,7 @@ class MenuHandler: NSMenu, NSMenuDelegate {
     app.updateStatusItemVisibility(showIcon)
     self.clearMenu()
     let currentDisplay = DisplayManager.shared.getCurrentDisplay()
+    let relevantID = currentDisplay.map { DisplayManager.resolveEffectiveDisplayID($0.identifier) }
     var displays = DisplayManager.shared.sortDisplaysByFriendlyName()
     if prefs.bool(forKey: PrefKey.hideAppleFromMenu.rawValue) {
       displays.removeAll { $0 is AppleDisplay }
@@ -67,10 +68,10 @@ class MenuHandler: NSMenu, NSMenuDelegate {
     if numOfDisplays != 0 {
       let asSubMenu: Bool = (displays.count > 3 && !relevant && !combine && app.macOS10()) ? true : false
       var iterator = 0
-      for display in displays where (!relevant || DisplayManager.resolveEffectiveDisplayID(display.identifier) == DisplayManager.resolveEffectiveDisplayID(currentDisplay!.identifier)) && !isHidden(display) {
+      for display in displays where (!relevant || relevantID == DisplayManager.resolveEffectiveDisplayID(display.identifier)) && !isHidden(display) {
         iterator += 1
         if !relevant, !combine, iterator != 1, app.macOS10() {
-          self.insertItem(NSMenuItem.separator(), at: 0)
+          self.addItem(NSMenuItem.separator())
         }
         self.updateDisplayMenu(display: display, asSubMenu: asSubMenu, numOfDisplays: numOfDisplays)
       }
@@ -81,9 +82,19 @@ class MenuHandler: NSMenu, NSMenuDelegate {
     self.addDefaultMenuOptions()
   }
 
-  func addSliderItem(monitorSubMenu: NSMenu, sliderHandler: SliderHandler) {
+  func addSliderItem(monitorSubMenu: NSMenu, sliderHandler: SliderHandler, append: Bool = false) {
     let item = NSMenuItem()
     item.view = sliderHandler.view
+    if append {
+      if app.macOS10() {
+        let sliderHeaderItem = NSMenuItem()
+        let attrs: [NSAttributedString.Key: Any] = [.foregroundColor: NSColor.systemGray, .font: NSFont.systemFont(ofSize: 12)]
+        sliderHeaderItem.attributedTitle = NSAttributedString(string: sliderHandler.title, attributes: attrs)
+        monitorSubMenu.addItem(sliderHeaderItem)
+      }
+      monitorSubMenu.addItem(item)
+      return
+    }
     monitorSubMenu.insertItem(item, at: 0)
     if app.macOS10() {
       let sliderHeaderItem = NSMenuItem()
@@ -109,6 +120,13 @@ class MenuHandler: NSMenu, NSMenuDelegate {
   }
 
   func addDisplayMenuBlock(addedSliderHandlers: [SliderHandler], blockName: String, monitorSubMenu: NSMenu, numOfDisplays: Int, asSubMenu: Bool, display: Display? = nil) {
+    if monitorSubMenu === self, app.macOS10() {
+      self.appendMenuHeader(friendlyName: blockName, monitorSubMenu: monitorSubMenu, asSubMenu: asSubMenu, numOfDisplays: numOfDisplays)
+      for addedSliderHandler in addedSliderHandlers.reversed() {
+        self.addSliderItem(monitorSubMenu: monitorSubMenu, sliderHandler: addedSliderHandler, append: true)
+      }
+      return
+    }
     if numOfDisplays > 1, prefs.integer(forKey: PrefKey.multiSliders.rawValue) != MultiSliders.relevant.rawValue, !DEBUG_MACOS10, #available(macOS 11.0, *) {
       class BlockView: NSView {
         override func draw(_: NSRect) {
@@ -197,7 +215,11 @@ class MenuHandler: NSMenu, NSMenuDelegate {
       let item = NSMenuItem()
       item.view = itemView
       if addedSliderHandlers.count != 0 {
-        monitorSubMenu.insertItem(item, at: 0)
+        if monitorSubMenu === self {
+          monitorSubMenu.addItem(item)
+        } else {
+          monitorSubMenu.insertItem(item, at: 0)
+        }
       }
     } else {
       for addedSliderHandler in addedSliderHandlers {
@@ -407,11 +429,11 @@ class MenuHandler: NSMenu, NSMenuDelegate {
     if asSubMenu {
       monitorMenuItem.title = "\(friendlyName)"
       monitorMenuItem.submenu = monitorSubMenu
-      self.insertItem(monitorMenuItem, at: 0)
+      self.addItem(monitorMenuItem)
     } else if app.macOS10(), numOfDisplays > 1 {
       let attrs: [NSAttributedString.Key: Any] = [.foregroundColor: NSColor.systemGray, .font: NSFont.boldSystemFont(ofSize: 12)]
       monitorMenuItem.attributedTitle = NSAttributedString(string: "\(friendlyName)", attributes: attrs)
-      self.insertItem(monitorMenuItem, at: 0)
+      self.addItem(monitorMenuItem)
     }
   }
 

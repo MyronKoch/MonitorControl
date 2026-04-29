@@ -97,9 +97,6 @@ class OtherDisplay: Display {
     case .contrast: currentDDCValue = UInt16(Float(DDC_MAX_DETECT_LIMIT) * 0.750)
     default: currentDDCValue = UInt16(Float(DDC_MAX_DETECT_LIMIT) * 1.000)
     }
-    if command == .audioSpeakerVolume {
-      currentDDCValue = UInt16(Float(DDC_MAX_DETECT_LIMIT) * 0.125) // lower default audio value as high volume might rattle the user.
-    }
     os_log("Setting up display %{public}@ for %{public}@", type: .info, String(self.identifier), String(reflecting: command))
     if !self.isSw() {
       if prefs.integer(forKey: PrefKey.startupAction.rawValue) == StartupAction.read.rawValue, self.pollingCount != 0, !app.safeMode {

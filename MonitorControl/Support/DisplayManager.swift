@@ -250,7 +250,7 @@ class DisplayManager {
           let rhsTitle = rhs.readPrefAsString(key: .friendlyName).isEmpty
               ? rhs.name
               : rhs.readPrefAsString(key: .friendlyName)
-          return lhsTitle.localizedStandardCompare(rhsTitle) == .orderedDescending
+          return lhsTitle.localizedStandardCompare(rhsTitle) == .orderedAscending
       }
   }
 
@@ -366,10 +366,10 @@ class DisplayManager {
     for otherDisplay in self.getOtherDisplays() {
       if (otherDisplay.readPrefAsFloat(for: .brightness) == 0 && !prefs.bool(forKey: PrefKey.disableCombinedBrightness.rawValue)) || (otherDisplay.readPrefAsFloat(for: .brightness) < otherDisplay.combinedBrightnessSwitchingValue() && !prefs.bool(forKey: PrefKey.separateCombinedScale.rawValue) && !prefs.bool(forKey: PrefKey.disableCombinedBrightness.rawValue)) || otherDisplay.isSw() {
         let savedPrefValue = otherDisplay.readPrefAsFloat(key: .SwBrightness)
-        if otherDisplay.getSwBrightness() != savedPrefValue {
+        let currentSwBrightness = otherDisplay.getSwBrightness()
+        if currentSwBrightness != savedPrefValue {
           OSDUtils.popEmptyOsd(displayID: otherDisplay.identifier, command: Command.brightness) // This will give the user a hint why is the brightness suddenly changes.
         }
-        otherDisplay.savePref(otherDisplay.getSwBrightness(), key: .SwBrightness)
         os_log("Restoring sw brightness to %{public}@ on other display %{public}@", type: .info, String(savedPrefValue), String(otherDisplay.identifier))
         _ = otherDisplay.setSwBrightness(savedPrefValue, smooth: async)
         if otherDisplay.isSw(), let slider = otherDisplay.sliderHandler[.brightness] {
