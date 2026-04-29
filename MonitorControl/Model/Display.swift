@@ -75,7 +75,7 @@ class Display: Equatable {
     os_log("Display init with prefsIdentifier %{public}@", type: .info, self.prefsId)
     self.swUpdateDefaultGammaTable()
     self.smoothBrightnessTransient = self.getBrightness()
-    if self.isVirtual || self.readPrefAsBool(key: PrefKey.avoidGamma), !self.isDummy {
+    if self.readPrefAsBool(key: PrefKey.avoidGamma), !self.isDummy {
       os_log("Creating or updating shade for display %{public}@", type: .info, String(self.identifier))
       _ = DisplayManager.shared.updateShade(displayID: self.identifier)
     } else {
@@ -216,7 +216,7 @@ class Display: Equatable {
     self.swBrightnessSemaphore.wait()
     let brightnessValue = min(1, value)
     var currentValue = self.readPrefAsFloat(key: .SwBrightness)
-    let usesShade = self.isVirtual || self.readPrefAsBool(key: .avoidGamma)
+    let usesShade = self.readPrefAsBool(key: .avoidGamma)
     if !noPrefSave {
       self.savePref(brightnessValue, key: .SwBrightness)
     }
@@ -277,7 +277,7 @@ class Display: Equatable {
       }
     }
     self.swBrightnessSemaphore.wait()
-    if self.isVirtual || self.readPrefAsBool(key: .avoidGamma) {
+    if self.readPrefAsBool(key: .avoidGamma) {
       let rawBrightnessValue = 1 - (DisplayManager.shared.getShadeAlpha(displayID: DisplayManager.resolveEffectiveDisplayID(self.identifier)) ?? 1)
       self.swBrightnessSemaphore.signal()
       return self.swBrightnessTransform(value: rawBrightnessValue, reverse: true)

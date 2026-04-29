@@ -93,6 +93,15 @@ enum PrefKey: String {
   // Sliders for multiple displays
   case multiSliders
 
+  // Master brightness lock state
+  case masterBrightnessLocked
+
+  // Master brightness slider value
+  case masterBrightnessValue
+
+  // Dimming paused state
+  case dimmingPaused
+
   /* -- Display specific settings */
 
   // Enable mute DDC for display
@@ -133,6 +142,9 @@ enum PrefKey: String {
 
   // Last known input source for display
   case lastInputSource
+
+  // Locked baseline for master brightness
+  case masterBrightnessBaseline
 
   /* -- Display+Command specific settings -- */
 

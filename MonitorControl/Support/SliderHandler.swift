@@ -285,6 +285,15 @@ class SliderHandler {
     percentageBox.alphaValue = 0.7
   }
 
+  var masterLocked: Bool = false
+
+  func setEnabled(_ isEnabled: Bool) {
+    self.masterLocked = !isEnabled
+    self.slider?.alphaValue = isEnabled ? 1 : 0.45
+    self.icon?.alphaValue = isEnabled ? 1 : 0.35
+    self.percentageBox?.alphaValue = isEnabled ? 0.7 : 0.45
+  }
+
   func valueChangedOtherDisplay(otherDisplay: OtherDisplay, value: Float) {
     // For the speaker volume slider, also set/unset the mute command when the value is changed from/to 0
     if self.command == .audioSpeakerVolume, (otherDisplay.readPrefAsInt(for: .audioMuteScreenBlank) == 1 && value > 0) || (otherDisplay.readPrefAsInt(for: .audioMuteScreenBlank) != 1 && value == 0) {
@@ -310,6 +319,17 @@ class SliderHandler {
       return
     }
     var value = slider.floatValue
+    let commandHeld = NSEvent.modifierFlags.contains(.command)
+    if self.masterLocked, !commandHeld {
+      let masterValue = prefs.float(forKey: PrefKey.masterBrightnessValue.rawValue)
+      for display in self.displays {
+        let baseline = display.readPrefAsFloat(key: .masterBrightnessBaseline)
+        let lockedValue = baseline * (masterValue > 0 ? masterValue : 1)
+        slider.floatValue = lockedValue
+        self.percentageBox?.stringValue = String(Int(lockedValue * 100)) + "%"
+      }
+      return
+    }
     self.updateIcon()
     if prefs.bool(forKey: PrefKey.enableSliderSnap.rawValue) {
       let intPercent = Int(value * 100)
@@ -321,13 +341,18 @@ class SliderHandler {
         slider.floatValue = value
       }
     }
-    self.percentageBox?.stringValue = "" + String(Int(value * 100)) + "%"
+    self.percentageBox?.stringValue = String(Int(value * 100)) + "%"
     for display in self.displays {
       slider.setHighlightItem(display.identifier, value: value)
       if self.command == .brightness, let appleDisplay = display as? AppleDisplay {
         _ = appleDisplay.setBrightness(value)
       } else if let otherDisplay = display as? OtherDisplay {
         self.valueChangedOtherDisplay(otherDisplay: otherDisplay, value: value)
+      }
+      if self.masterLocked, commandHeld, self.command == .brightness {
+        let masterValue = prefs.float(forKey: PrefKey.masterBrightnessValue.rawValue)
+        let newBaseline = masterValue > 0 ? value / masterValue : value
+        display.savePref(newBaseline, key: .masterBrightnessBaseline)
       }
     }
     slider.setDisplayHighlightItems(false)
@@ -372,7 +397,9 @@ class SliderHandler {
       // let average = sumVal / Float(num)
       slider.floatValue = value
       self.updateIcon()
-      if abs(maxVal - minVal) > 0.001 {
+      if num == 0 {
+        slider.setDisplayHighlightItems(false)
+      } else if abs(maxVal - minVal) > 0.001 {
         slider.setDisplayHighlightItems(true)
       } else {
         slider.setDisplayHighlightItems(false)

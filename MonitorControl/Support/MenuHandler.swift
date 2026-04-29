@@ -5,6 +5,7 @@ import os.log
 
 class MenuHandler: NSMenu, NSMenuDelegate {
   var combinedSliderHandler: [Command: SliderHandler] = [:]
+  var masterBrightnessSliderHandler: SliderHandler?
 
   var lastMenuRelevantDisplayId: CGDirectDisplayID = 0
 
@@ -17,6 +18,7 @@ class MenuHandler: NSMenu, NSMenuDelegate {
       self.removeItem(item)
     }
     self.combinedSliderHandler.removeAll()
+    self.masterBrightnessSliderHandler = nil
   }
 
   func menuWillOpen(_: NSMenu) {
@@ -58,10 +60,6 @@ class MenuHandler: NSMenu, NSMenuDelegate {
     let isHidden: (Display) -> Bool = { display in
       if display.isDummy { return true }
       if let other = display as? OtherDisplay, other.isDiscouraged { return true }
-      // Hide phantom displays whose name is just a numeric ID (e.g. "100012586")
-      // These are displays where macOS couldn't read an EDID product name
-      let baseName = display.name.replacingOccurrences(of: #" \(\d+\)$"#, with: "", options: .regularExpression)
-      if !baseName.isEmpty, baseName.allSatisfy({ $0.isNumber }) { return true }
       return false
     }
     let numOfDisplays = displays.filter { !isHidden($0) }.count
@@ -78,6 +76,9 @@ class MenuHandler: NSMenu, NSMenuDelegate {
       if combine {
         self.addCombinedDisplayMenuBlock()
       }
+    }
+    if self.isMasterBrightnessLocked(), !self.brightnessControllableDisplays().isEmpty {
+      self.addMasterBrightnessMenuBlock()
     }
     self.addDefaultMenuOptions()
   }
@@ -252,6 +253,7 @@ class MenuHandler: NSMenu, NSMenuDelegate {
     os_log("Addig menu items for display %{public}@", type: .info, "\(display.identifier)")
     let monitorSubMenu: NSMenu = asSubMenu ? NSMenu() : self
     var addedSliderHandlers: [SliderHandler] = []
+    let isMasterBrightnessLocked = self.isMasterBrightnessLocked()
     display.sliderHandler[.audioSpeakerVolume] = nil
     if let otherDisplay = display as? OtherDisplay, !otherDisplay.isSw(), !display.readPrefAsBool(key: .unavailableDDC, for: .audioSpeakerVolume), !prefs.bool(forKey: PrefKey.hideVolume.rawValue) {
       let title = NSLocalizedString("Volume", comment: "Shown in menu")
@@ -270,7 +272,11 @@ class MenuHandler: NSMenu, NSMenuDelegate {
     display.sliderHandler[.brightness] = nil
     if !display.readPrefAsBool(key: .unavailableDDC, for: .brightness), !prefs.bool(forKey: PrefKey.hideBrightness.rawValue) {
       let title = NSLocalizedString("Brightness", comment: "Shown in menu")
-      addedSliderHandlers.append(self.setupMenuSliderHandler(command: .brightness, display: display, title: title))
+      let sliderHandler = self.setupMenuSliderHandler(command: .brightness, display: display, title: title)
+      if isMasterBrightnessLocked {
+        sliderHandler.setEnabled(false)
+      }
+      addedSliderHandlers.append(sliderHandler)
     }
     if prefs.integer(forKey: PrefKey.multiSliders.rawValue) != MultiSliders.combine.rawValue {
       self.addDisplayMenuBlock(addedSliderHandlers: addedSliderHandlers, blockName: display.readPrefAsString(key: .friendlyName) != "" ? display.readPrefAsString(key: .friendlyName) : display.name, monitorSubMenu: monitorSubMenu, numOfDisplays: numOfDisplays, asSubMenu: asSubMenu, display: display)
@@ -447,8 +453,199 @@ class MenuHandler: NSMenu, NSMenuDelegate {
     }
   }
 
+  func isMasterBrightnessLocked() -> Bool {
+    prefs.bool(forKey: PrefKey.masterBrightnessLocked.rawValue)
+  }
+
+  func masterBrightnessValue() -> Float {
+    if prefs.object(forKey: PrefKey.masterBrightnessValue.rawValue) == nil {
+      return 1
+    }
+    return max(0, min(1, prefs.float(forKey: PrefKey.masterBrightnessValue.rawValue)))
+  }
+
+  func brightnessControllableDisplays() -> [Display] {
+    DisplayManager.shared.displays.filter { display in
+      guard !display.isDummy else {
+        return false
+      }
+      if let otherDisplay = display as? OtherDisplay {
+        return !otherDisplay.isDiscouraged && (otherDisplay.isSw() || !otherDisplay.readPrefAsBool(key: .unavailableDDC, for: .brightness))
+      }
+      return display is AppleDisplay
+    }
+  }
+
+  func masterBrightnessBaseline(for display: Display) -> Float {
+    if display.prefExists(key: .masterBrightnessBaseline) {
+      return display.readPrefAsFloat(key: .masterBrightnessBaseline)
+    }
+    let baseline = display.getBrightness()
+    display.savePref(baseline, key: .masterBrightnessBaseline)
+    return baseline
+  }
+
+  func applyMasterBrightness(value: Float) {
+    for display in self.brightnessControllableDisplays() {
+      let targetBrightness = self.masterBrightnessBaseline(for: display) * value
+      if display.setBrightness(targetBrightness), let sliderHandler = display.sliderHandler[.brightness] {
+        sliderHandler.setValue(targetBrightness, displayID: display.identifier)
+      }
+    }
+  }
+
+  func makeMenuIconButton(symbolName: String, alternateSymbolName: String? = nil, accessibilityDescription: String, action: Selector, target: AnyObject? = nil, alphaValue: CGFloat = 0.3) -> NSButton {
+    let button = NSButton()
+    button.bezelStyle = .regularSquare
+    button.isBordered = false
+    button.setButtonType(.momentaryChange)
+    if !DEBUG_MACOS10, #available(macOS 11.0, *) {
+      button.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: accessibilityDescription)
+      if let alternateSymbolName = alternateSymbolName {
+        button.alternateImage = NSImage(systemSymbolName: alternateSymbolName, accessibilityDescription: accessibilityDescription)
+      }
+    }
+    button.alphaValue = alphaValue
+    button.imageScaling = .scaleProportionallyUpOrDown
+    button.toolTip = accessibilityDescription
+    button.action = action
+    button.target = target
+    return button
+  }
+
+  func addMasterBrightnessMenuBlock() {
+    let title = NSLocalizedString("Master Brightness", comment: "Shown in menu")
+    let sliderHandler = SliderHandler(display: nil, command: .brightness, title: title)
+    sliderHandler.setValue(self.masterBrightnessValue())
+    if let slider = sliderHandler.slider {
+      slider.target = self
+      slider.action = #selector(masterBrightnessValueChanged)
+    }
+    self.masterBrightnessSliderHandler = sliderHandler
+    if !DEBUG_MACOS10, #available(macOS 11.0, *) {
+      class BlockView: NSView {
+        override func draw(_: NSRect) {
+          let radius = prefs.bool(forKey: PrefKey.showTickMarks.rawValue) ? CGFloat(4) : CGFloat(11)
+          let outerMargin = CGFloat(15)
+          let blockRect = self.frame.insetBy(dx: outerMargin, dy: outerMargin / 2 + 2).offsetBy(dx: 0, dy: outerMargin / 2 * -1 + 7)
+          for i in 1 ... 5 {
+            let blockPath = NSBezierPath(roundedRect: blockRect.insetBy(dx: CGFloat(i) * -1, dy: CGFloat(i) * -1), xRadius: radius + CGFloat(i) * 0.5, yRadius: radius + CGFloat(i) * 0.5)
+            NSColor.black.withAlphaComponent(0.1 / CGFloat(i)).setStroke()
+            blockPath.stroke()
+          }
+          let blockPath = NSBezierPath(roundedRect: blockRect, xRadius: radius, yRadius: radius)
+          if [NSAppearance.Name.darkAqua, NSAppearance.Name.vibrantDark].contains(effectiveAppearance.name) {
+            NSColor.systemGray.withAlphaComponent(0.3).setStroke()
+            blockPath.stroke()
+          }
+          if ![NSAppearance.Name.darkAqua, NSAppearance.Name.vibrantDark].contains(effectiveAppearance.name) {
+            NSColor.white.withAlphaComponent(0.5).setFill()
+            blockPath.fill()
+          }
+        }
+      }
+      let contentWidth = sliderHandler.view?.frame.width ?? 200
+      var contentHeight = sliderHandler.view?.frame.height ?? 22
+      contentHeight += 21
+      let margin = CGFloat(13)
+      let attrs: [NSAttributedString.Key: Any] = [.foregroundColor: NSColor.textColor, .font: NSFont.boldSystemFont(ofSize: 12)]
+      let blockNameView = NSTextField(labelWithAttributedString: NSAttributedString(string: title, attributes: attrs))
+      blockNameView.frame.size.width = contentWidth - margin * 2
+      blockNameView.alphaValue = 0.5
+      let itemView = BlockView(frame: NSRect(x: 0, y: 0, width: contentWidth + margin * 2, height: contentHeight + margin * 2))
+      sliderHandler.view?.setFrameOrigin(NSPoint(x: margin, y: margin + (margin * -1 + 1) + 13))
+      if let sliderView = sliderHandler.view {
+        itemView.addSubview(sliderView)
+      }
+      blockNameView.setFrameOrigin(NSPoint(x: margin + 13, y: contentHeight - 8))
+      itemView.addSubview(blockNameView)
+      let unlockButtonSize = CGFloat(13)
+      let unlockButton = self.makeMenuIconButton(symbolName: "lock.fill", accessibilityDescription: NSLocalizedString("Unlock Levels", comment: "Shown in menu"), action: #selector(unlockMasterBrightnessLevels), target: self, alphaValue: 0.35)
+      unlockButton.frame = NSRect(x: itemView.frame.width - margin - 13 - unlockButtonSize, y: blockNameView.frame.origin.y + (blockNameView.frame.height - unlockButtonSize) / 2, width: unlockButtonSize, height: unlockButtonSize)
+      itemView.addSubview(unlockButton)
+      let item = NSMenuItem()
+      item.view = itemView
+      self.insertItem(item, at: 0)
+    } else {
+      self.addSliderItem(monitorSubMenu: self, sliderHandler: sliderHandler)
+      if app.macOS10() {
+        let headerItem = NSMenuItem()
+        let attrs: [NSAttributedString.Key: Any] = [.foregroundColor: NSColor.systemGray, .font: NSFont.systemFont(ofSize: 12)]
+        headerItem.attributedTitle = NSAttributedString(string: title, attributes: attrs)
+        self.insertItem(headerItem, at: 0)
+      }
+      let unlockItem = NSMenuItem(title: NSLocalizedString("Unlock Levels", comment: "Shown in menu"), action: #selector(unlockMasterBrightnessLevels), keyEquivalent: "")
+      unlockItem.target = self
+      self.insertItem(unlockItem, at: 0)
+    }
+  }
+
+  @objc func masterBrightnessValueChanged(slider: NSSlider) {
+    guard app.sleepID == 0, app.reconfigureID == 0 else {
+      return
+    }
+    var value = slider.floatValue
+    if prefs.bool(forKey: PrefKey.enableSliderSnap.rawValue) {
+      let intPercent = Int(value * 100)
+      let snapInterval = 25
+      let snapThreshold = 3
+      let closest = (intPercent + snapInterval / 2) / snapInterval * snapInterval
+      if abs(closest - intPercent) <= snapThreshold {
+        value = Float(closest) / 100
+        slider.floatValue = value
+      }
+    }
+    prefs.set(value, forKey: PrefKey.masterBrightnessValue.rawValue)
+    self.masterBrightnessSliderHandler?.setValue(value)
+    self.applyMasterBrightness(value: value)
+  }
+
+  @objc func lockMasterBrightnessLevels(_: AnyObject) {
+    let displays = self.brightnessControllableDisplays()
+    guard !displays.isEmpty else {
+      return
+    }
+    for display in displays {
+      display.savePref(display.getBrightness(), key: .masterBrightnessBaseline)
+    }
+    prefs.set(true, forKey: PrefKey.masterBrightnessLocked.rawValue)
+    prefs.set(Float(1), forKey: PrefKey.masterBrightnessValue.rawValue)
+    self.updateMenus(dontClose: true)
+  }
+
+  @objc func unlockMasterBrightnessLevels(_: AnyObject) {
+    prefs.set(false, forKey: PrefKey.masterBrightnessLocked.rawValue)
+    self.updateMenus(dontClose: true)
+  }
+
+  func isDimmingPaused() -> Bool {
+    prefs.bool(forKey: PrefKey.dimmingPaused.rawValue)
+  }
+
+  @objc func toggleDimmingPause(_: AnyObject) {
+    let wasPaused = self.isDimmingPaused()
+    if wasPaused {
+      prefs.set(false, forKey: PrefKey.dimmingPaused.rawValue)
+      for display in self.brightnessControllableDisplays() {
+        let savedValue = display.readPrefAsFloat(for: .brightness)
+        _ = display.setBrightness(savedValue)
+        if let slider = display.sliderHandler[.brightness] {
+          slider.setValue(savedValue, displayID: display.identifier)
+        }
+      }
+    } else {
+      prefs.set(true, forKey: PrefKey.dimmingPaused.rawValue)
+      for display in self.brightnessControllableDisplays() {
+        _ = display.setDirectBrightness(1)
+      }
+    }
+    self.updateMenus(dontClose: true)
+  }
+
   func addDefaultMenuOptions() {
-    if !DEBUG_MACOS10, #available(macOS 11.0, *), prefs.integer(forKey: PrefKey.menuItemStyle.rawValue) == MenuItemStyle.icon.rawValue {
+    let menuItemStyle = prefs.integer(forKey: PrefKey.menuItemStyle.rawValue)
+    let showLockControl = !self.isMasterBrightnessLocked() && !self.brightnessControllableDisplays().isEmpty
+    if !DEBUG_MACOS10, #available(macOS 11.0, *), menuItemStyle == MenuItemStyle.icon.rawValue {
       let iconSize = CGFloat(18)
       let viewWidth = max(130, self.size.width)
       var compensateForBlock: CGFloat = 0
@@ -458,58 +655,50 @@ class MenuHandler: NSMenu, NSMenuDelegate {
 
       let menuItemView = NSView(frame: NSRect(x: 0, y: 0, width: viewWidth, height: iconSize + 10))
 
-      let settingsIcon = NSButton()
-      settingsIcon.bezelStyle = .regularSquare
-      settingsIcon.isBordered = false
-      settingsIcon.setButtonType(.momentaryChange)
-      settingsIcon.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: NSLocalizedString("Settings…", comment: "Shown in menu"))
-      settingsIcon.alternateImage = NSImage(systemSymbolName: "gearshape.fill", accessibilityDescription: NSLocalizedString("Settings…", comment: "Shown in menu"))
-      settingsIcon.alphaValue = 0.3
-      settingsIcon.frame = NSRect(x: menuItemView.frame.maxX - iconSize * 3 - 20 - 17 + compensateForBlock, y: menuItemView.frame.origin.y + 5, width: iconSize, height: iconSize)
-      settingsIcon.imageScaling = .scaleProportionallyUpOrDown
-      settingsIcon.action = #selector(app.prefsClicked)
-
-      let updateIcon = NSButton()
-      updateIcon.bezelStyle = .regularSquare
-      updateIcon.isBordered = false
-      updateIcon.setButtonType(.momentaryChange)
+      let settingsIcon = self.makeMenuIconButton(symbolName: "gearshape", alternateSymbolName: "gearshape.fill", accessibilityDescription: NSLocalizedString("Settings…", comment: "Shown in menu"), action: #selector(app.prefsClicked))
+      let lockIcon = self.makeMenuIconButton(symbolName: "lock.open.fill", accessibilityDescription: NSLocalizedString("Lock Levels", comment: "Shown in menu"), action: #selector(lockMasterBrightnessLevels), target: self)
       var symbolName = prefs.bool(forKey: PrefKey.showTickMarks.rawValue) ? "arrow.left.arrow.right.square" : "arrow.triangle.2.circlepath.circle"
-      updateIcon.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: NSLocalizedString("Check for updates…", comment: "Shown in menu"))
-      updateIcon.alternateImage = NSImage(systemSymbolName: symbolName + ".fill", accessibilityDescription: NSLocalizedString("Check for updates…", comment: "Shown in menu"))
-
-      updateIcon.alphaValue = 0.3
-      updateIcon.frame = NSRect(x: menuItemView.frame.maxX - iconSize * 2 - 14 - 17 + compensateForBlock, y: menuItemView.frame.origin.y + 5, width: iconSize, height: iconSize)
-      updateIcon.imageScaling = .scaleProportionallyUpOrDown
-      updateIcon.action = #selector(app.updaterController.checkForUpdates(_:))
-      updateIcon.target = app.updaterController
-
-      let quitIcon = NSButton()
-      quitIcon.bezelStyle = .regularSquare
-      quitIcon.isBordered = false
-      quitIcon.setButtonType(.momentaryChange)
+      let updateIcon = self.makeMenuIconButton(symbolName: symbolName, alternateSymbolName: symbolName + ".fill", accessibilityDescription: NSLocalizedString("Check for updates…", comment: "Shown in menu"), action: #selector(app.updaterController.checkForUpdates(_:)), target: app.updaterController)
       symbolName = prefs.bool(forKey: PrefKey.showTickMarks.rawValue) ? "multiply.square" : "xmark.circle"
-      quitIcon.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: NSLocalizedString("Quit", comment: "Shown in menu"))
-      quitIcon.alternateImage = NSImage(systemSymbolName: symbolName + ".fill", accessibilityDescription: NSLocalizedString("Quit", comment: "Shown in menu"))
-      quitIcon.alphaValue = 0.3
-      quitIcon.frame = NSRect(x: menuItemView.frame.maxX - iconSize - 17 + compensateForBlock, y: menuItemView.frame.origin.y + 5, width: iconSize, height: iconSize)
-      quitIcon.imageScaling = .scaleProportionallyUpOrDown
-      quitIcon.action = #selector(app.quitClicked)
+      let quitIcon = self.makeMenuIconButton(symbolName: symbolName, alternateSymbolName: symbolName + ".fill", accessibilityDescription: NSLocalizedString("Quit", comment: "Shown in menu"), action: #selector(app.quitClicked))
 
-      menuItemView.addSubview(settingsIcon)
-      menuItemView.addSubview(updateIcon)
-      menuItemView.addSubview(quitIcon)
+      let isPaused = self.isDimmingPaused()
+      let pauseSymbol = isPaused ? "play.fill" : "pause.fill"
+      let pauseLabel = isPaused ? NSLocalizedString("Resume Dimming", comment: "Shown in menu") : NSLocalizedString("Pause Dimming", comment: "Shown in menu")
+      let pauseIcon = self.makeMenuIconButton(symbolName: pauseSymbol, accessibilityDescription: pauseLabel, action: #selector(toggleDimmingPause), target: self, alphaValue: isPaused ? 0.6 : 0.3)
+      var buttons = [quitIcon, updateIcon, settingsIcon, pauseIcon]
+      if showLockControl {
+        buttons.append(lockIcon)
+      }
+      var currentX = menuItemView.frame.maxX - iconSize - 17 + compensateForBlock
+      for button in buttons {
+        button.frame = NSRect(x: currentX, y: menuItemView.frame.origin.y + 5, width: iconSize, height: iconSize)
+        menuItemView.addSubview(button)
+        currentX -= iconSize + 8
+      }
       let item = NSMenuItem()
       item.view = menuItemView
       self.insertItem(item, at: self.items.count)
-    } else if prefs.integer(forKey: PrefKey.menuItemStyle.rawValue) != MenuItemStyle.hide.rawValue {
-      if app.macOS10() {
+    } else if showLockControl || menuItemStyle != MenuItemStyle.hide.rawValue {
+      if self.items.count > 0, (app.macOS10() || menuItemStyle == MenuItemStyle.hide.rawValue) {
         self.insertItem(NSMenuItem.separator(), at: self.items.count)
       }
-      self.insertItem(withTitle: NSLocalizedString("Settings…", comment: "Shown in menu"), action: #selector(app.prefsClicked), keyEquivalent: ",", at: self.items.count)
-      let updateItem = NSMenuItem(title: NSLocalizedString("Check for updates…", comment: "Shown in menu"), action: #selector(app.updaterController.checkForUpdates(_:)), keyEquivalent: "")
-      updateItem.target = app.updaterController
-      self.insertItem(updateItem, at: self.items.count)
-      self.insertItem(withTitle: NSLocalizedString("Quit", comment: "Shown in menu"), action: #selector(app.quitClicked), keyEquivalent: "q", at: self.items.count)
+      let pauseTitle = self.isDimmingPaused() ? NSLocalizedString("Resume Dimming", comment: "Shown in menu") : NSLocalizedString("Pause Dimming", comment: "Shown in menu")
+      let pauseItem = NSMenuItem(title: pauseTitle, action: #selector(toggleDimmingPause), keyEquivalent: "")
+      pauseItem.target = self
+      self.insertItem(pauseItem, at: self.items.count)
+      if showLockControl {
+        let lockItem = NSMenuItem(title: NSLocalizedString("Lock Levels", comment: "Shown in menu"), action: #selector(lockMasterBrightnessLevels), keyEquivalent: "")
+        lockItem.target = self
+        self.insertItem(lockItem, at: self.items.count)
+      }
+      if menuItemStyle != MenuItemStyle.hide.rawValue {
+        self.insertItem(withTitle: NSLocalizedString("Settings…", comment: "Shown in menu"), action: #selector(app.prefsClicked), keyEquivalent: ",", at: self.items.count)
+        let updateItem = NSMenuItem(title: NSLocalizedString("Check for updates…", comment: "Shown in menu"), action: #selector(app.updaterController.checkForUpdates(_:)), keyEquivalent: "")
+        updateItem.target = app.updaterController
+        self.insertItem(updateItem, at: self.items.count)
+        self.insertItem(withTitle: NSLocalizedString("Quit", comment: "Shown in menu"), action: #selector(app.quitClicked), keyEquivalent: "q", at: self.items.count)
+      }
     }
   }
 }
