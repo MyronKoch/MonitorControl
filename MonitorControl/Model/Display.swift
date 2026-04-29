@@ -228,10 +228,10 @@ class Display: Equatable {
     currentValue = self.swBrightnessTransform(value: currentValue)
     newValue = self.swBrightnessTransform(value: newValue)
     if smooth {
+      self.swBrightnessSemaphore.signal()
       DispatchQueue.global(qos: .userInteractive).async {
         for transientValue in stride(from: currentValue, to: newValue, by: 0.005 * (currentValue > newValue ? -1 : 1)) {
           guard app.reconfigureID == 0 else {
-            self.swBrightnessSemaphore.signal()
             return
           }
           if usesShade {
@@ -242,11 +242,12 @@ class Display: Equatable {
             let gammaTableRed = self.defaultGammaTableRed.map { $0 * transientValue }
             let gammaTableGreen = self.defaultGammaTableGreen.map { $0 * transientValue }
             let gammaTableBlue = self.defaultGammaTableBlue.map { $0 * transientValue }
-            CGSetDisplayTransferByTable(self.identifier, self.defaultGammaTableSampleCount, gammaTableRed, gammaTableGreen, gammaTableBlue)
+            DispatchQueue.main.sync {
+              CGSetDisplayTransferByTable(self.identifier, self.defaultGammaTableSampleCount, gammaTableRed, gammaTableGreen, gammaTableBlue)
+            }
           }
           Thread.sleep(forTimeInterval: 0.001) // Let's make things quick if not performed in the background
         }
-        self.swBrightnessSemaphore.signal()
       }
       return true
     } else {
