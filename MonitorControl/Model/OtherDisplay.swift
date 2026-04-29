@@ -493,6 +493,9 @@ class OtherDisplay: Display {
     let curveMultiplier = self.getCurveMultiplier(self.readPrefAsInt(key: .curveDDC, for: command))
     let minDDCValue = Float(self.readPrefAsInt(key: .minDDCOverride, for: command))
     let maxDDCValue = Float(self.readPrefAsInt(key: .maxDDC, for: command))
+    guard maxDDCValue != minDDCValue else {
+      return UInt16(max(0, min(minDDCValue, Float(UInt16.max))))
+    }
     let curvedValue = pow(max(min(value, 1), 0), curveMultiplier)
     let deNormalizedValue = (maxDDCValue - minDDCValue) * curvedValue + minDDCValue
     var intDDCValue = UInt16(min(max(deNormalizedValue, minDDCValue), maxDDCValue))
@@ -506,6 +509,9 @@ class OtherDisplay: Display {
     let curveMultiplier = self.getCurveMultiplier(self.readPrefAsInt(key: .curveDDC, for: command))
     let minDDCValue = Float(self.readPrefAsInt(key: .minDDCOverride, for: command))
     let maxDDCValue = Float(self.readPrefAsInt(key: .maxDDC, for: command))
+    guard maxDDCValue != minDDCValue else {
+      return 0.0
+    }
     let normalizedValue = ((min(max(Float(from), minDDCValue), maxDDCValue) - minDDCValue) / (maxDDCValue - minDDCValue))
     let deCurvedValue = pow(normalizedValue, 1.0 / curveMultiplier)
     var value = deCurvedValue

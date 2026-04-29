@@ -193,11 +193,14 @@ class Display: Equatable {
     guard !self.isDummy else {
       return
     }
-    CGGetDisplayTransferByTable(self.identifier, 256, &self.defaultGammaTableRed, &self.defaultGammaTableGreen, &self.defaultGammaTableBlue, &self.defaultGammaTableSampleCount)
-    let redPeak = self.defaultGammaTableRed.max() ?? 0
-    let greenPeak = self.defaultGammaTableGreen.max() ?? 0
-    let bluePeak = self.defaultGammaTableBlue.max() ?? 0
-    self.defaultGammaTablePeak = max(redPeak, greenPeak, bluePeak)
+    if CGGetDisplayTransferByTable(self.identifier, 256, &self.defaultGammaTableRed, &self.defaultGammaTableGreen, &self.defaultGammaTableBlue, &self.defaultGammaTableSampleCount) == CGError.success {
+      let redPeak = self.defaultGammaTableRed.max() ?? 0
+      let greenPeak = self.defaultGammaTableGreen.max() ?? 0
+      let bluePeak = self.defaultGammaTableBlue.max() ?? 0
+      self.defaultGammaTablePeak = max(redPeak, greenPeak, bluePeak)
+    } else {
+      self.defaultGammaTablePeak = 1.0
+    }
   }
 
   func swBrightnessTransform(value: Float, reverse: Bool = false) -> Float {
@@ -284,12 +287,16 @@ class Display: Equatable {
     var gammaTableSampleCount: UInt32 = 0
     var brightnessValue: Float = 1
     if CGGetDisplayTransferByTable(self.identifier, 256, &gammaTableRed, &gammaTableGreen, &gammaTableBlue, &gammaTableSampleCount) == CGError.success {
-      let redPeak = gammaTableRed.max() ?? 0
-      let greenPeak = gammaTableGreen.max() ?? 0
-      let bluePeak = gammaTableBlue.max() ?? 0
-      let gammaTablePeak = max(redPeak, greenPeak, bluePeak)
-      let peakRatio = gammaTablePeak / self.defaultGammaTablePeak
-      brightnessValue = round(self.swBrightnessTransform(value: peakRatio, reverse: true) * 256) / 256
+      if self.defaultGammaTablePeak == 0 {
+        brightnessValue = 1
+      } else {
+        let redPeak = gammaTableRed.max() ?? 0
+        let greenPeak = gammaTableGreen.max() ?? 0
+        let bluePeak = gammaTableBlue.max() ?? 0
+        let gammaTablePeak = max(redPeak, greenPeak, bluePeak)
+        let peakRatio = gammaTablePeak / self.defaultGammaTablePeak
+        brightnessValue = round(self.swBrightnessTransform(value: peakRatio, reverse: true) * 256) / 256
+      }
     }
     self.swBrightnessSemaphore.signal()
     return brightnessValue
