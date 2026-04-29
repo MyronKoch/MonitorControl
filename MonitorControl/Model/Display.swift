@@ -165,7 +165,6 @@ class Display: Equatable {
       _ = self.setDirectBrightness(self.smoothBrightnessTransient, transient: true)
       self.smoothBrightnessRunning = false
     }
-    self.swBrightnessSemaphore.signal()
     return true
   }
 
@@ -214,6 +213,7 @@ class Display: Equatable {
     self.swBrightnessSemaphore.wait()
     let brightnessValue = min(1, value)
     var currentValue = self.readPrefAsFloat(key: .SwBrightness)
+    let usesShade = self.isVirtual || self.readPrefAsBool(key: .avoidGamma)
     if !noPrefSave {
       self.savePref(brightnessValue, key: .SwBrightness)
     }
@@ -231,8 +231,10 @@ class Display: Equatable {
             self.swBrightnessSemaphore.signal()
             return
           }
-          if self.isVirtual || self.readPrefAsBool(key: .avoidGamma) {
-            _ = DisplayManager.shared.setShadeAlpha(value: 1 - transientValue, displayID: DisplayManager.resolveEffectiveDisplayID(self.identifier))
+          if usesShade {
+            DispatchQueue.main.async {
+              _ = DisplayManager.shared.setShadeAlpha(value: 1 - transientValue, displayID: DisplayManager.resolveEffectiveDisplayID(self.identifier))
+            }
           } else {
             let gammaTableRed = self.defaultGammaTableRed.map { $0 * transientValue }
             let gammaTableGreen = self.defaultGammaTableGreen.map { $0 * transientValue }
@@ -241,11 +243,14 @@ class Display: Equatable {
           }
           Thread.sleep(forTimeInterval: 0.001) // Let's make things quick if not performed in the background
         }
-      }
-    } else {
-      if self.isVirtual || self.readPrefAsBool(key: .avoidGamma) {
         self.swBrightnessSemaphore.signal()
-        return DisplayManager.shared.setShadeAlpha(value: 1 - newValue, displayID: DisplayManager.resolveEffectiveDisplayID(self.identifier))
+      }
+      return true
+    } else {
+      if usesShade {
+        let success = DisplayManager.shared.setShadeAlpha(value: 1 - newValue, displayID: DisplayManager.resolveEffectiveDisplayID(self.identifier))
+        self.swBrightnessSemaphore.signal()
+        return success
       } else {
         let gammaTableRed = self.defaultGammaTableRed.map { $0 * newValue }
         let gammaTableGreen = self.defaultGammaTableGreen.map { $0 * newValue }

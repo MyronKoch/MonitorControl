@@ -399,21 +399,27 @@ class OtherDisplay: Display {
     guard value != UInt16.max, value != lastValue else {
       return
     }
-    self.writeDDCQueue.async(flags: .barrier) {
-      self.writeDDCLastSavedValue[command] = value
-      self.savePref(true, key: PrefKey.isTouched, for: command)
-    }
     var controlCodes = self.getRemapControlCodes(command: command)
     if controlCodes.count == 0 {
       controlCodes.append(command.rawValue)
     }
+    var didWriteSucceed = true
+    var didAttemptWrite = false
     for controlCode in controlCodes {
       if Arm64DDC.isArm64 {
         if self.arm64ddc {
-          _ = Arm64DDC.write(service: self.arm64avService, command: controlCode, value: value)
+          didAttemptWrite = true
+          didWriteSucceed = Arm64DDC.write(service: self.arm64avService, command: controlCode, value: value) && didWriteSucceed
         }
       } else {
-        _ = self.ddc?.write(command: controlCode, value: value, errorRecoveryWaitTime: 2000) ?? false
+        didAttemptWrite = true
+        didWriteSucceed = (self.ddc?.write(command: controlCode, value: value, errorRecoveryWaitTime: 2000) ?? false) && didWriteSucceed
+      }
+    }
+    if didAttemptWrite, didWriteSucceed {
+      self.writeDDCQueue.async(flags: .barrier) {
+        self.writeDDCLastSavedValue[command] = value
+        self.savePref(true, key: PrefKey.isTouched, for: command)
       }
     }
   }

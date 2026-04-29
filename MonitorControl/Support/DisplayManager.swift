@@ -337,6 +337,8 @@ class DisplayManager {
       os_log("arm64 AVService update requested", type: .info)
       var displayIDs: [CGDirectDisplayID] = []
       for otherDisplay in self.getOtherDisplays() {
+        otherDisplay.arm64avService = nil
+        otherDisplay.arm64ddc = false
         displayIDs.append(otherDisplay.identifier)
       }
       for serviceMatch in Arm64DDC.getServiceMatches(displayIDs: displayIDs) {
