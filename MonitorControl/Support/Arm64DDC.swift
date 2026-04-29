@@ -100,7 +100,8 @@ class Arm64DDC: NSObject {
     }
     var packet: [UInt8] = [UInt8(0x80 | (send.count + 1)), UInt8(send.count)] + send + [0] // Note: the last byte is the place of the checksum, see next line!
     packet[packet.count - 1] = self.checksum(chk: send.count == 1 ? ARM64_DDC_7BIT_ADDRESS << 1 : ARM64_DDC_7BIT_ADDRESS << 1 ^ dataAddress, data: &packet, start: 0, end: packet.count - 2)
-    for _ in 1 ... (numOfRetryAttemps ?? 4) + 1 {
+    let attempts = max(1, Int(min(numOfRetryAttemps ?? 4, UInt8(30))))
+    for _ in 0 ..< attempts {
       for _ in 1 ... max((numOfWriteCycles ?? 2) + 0, 1) {
         usleep(writeSleepTime ?? 10000)
         success = IOAVServiceWriteI2C(service, UInt32(ARM64_DDC_7BIT_ADDRESS), UInt32(dataAddress), &packet, UInt32(packet.count)) == 0

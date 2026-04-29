@@ -313,24 +313,26 @@ class Display: Equatable {
     os_log("Gamma table interference detected, number of events: %{public}@", type: .info, String(DisplayManager.shared.gammaInterferenceCounter))
     if DisplayManager.shared.gammaInterferenceCounter >= 3 {
       DisplayManager.shared.gammaInterferenceWarningShown = true
-      let alert = NSAlert()
-      alert.messageText = NSLocalizedString("Is f.lux or similar running?", comment: "Shown in the alert dialog")
-      alert.informativeText = NSLocalizedString("An other app seems to change the brightness or colors which causes issues.\n\nTo solve this, you need to quit the other app or disable gamma control for your displays in MonitorControl!", comment: "Shown in the alert dialog")
-      alert.addButton(withTitle: NSLocalizedString("I'll quit the other app", comment: "Shown in the alert dialog"))
-      alert.addButton(withTitle: NSLocalizedString("Disable gamma control for my displays", comment: "Shown in the alert dialog"))
-      alert.alertStyle = NSAlert.Style.critical
-      if alert.runModal() != .alertFirstButtonReturn {
-        for otherDisplay in DisplayManager.shared.getOtherDisplays() {
-          _ = otherDisplay.setSwBrightness(1)
-          _ = otherDisplay.setDirectBrightness(1)
-          otherDisplay.savePref(true, key: .avoidGamma)
-          _ = otherDisplay.setSwBrightness(1)
-          DisplayManager.shared.gammaInterferenceWarningShown = false
-          DisplayManager.shared.gammaInterferenceCounter = 0
-          displaysPrefsVc?.loadDisplayList()
+      DispatchQueue.main.async {
+        let alert = NSAlert()
+        alert.messageText = NSLocalizedString("Is f.lux or similar running?", comment: "Shown in the alert dialog")
+        alert.informativeText = NSLocalizedString("An other app seems to change the brightness or colors which causes issues.\n\nTo solve this, you need to quit the other app or disable gamma control for your displays in MonitorControl!", comment: "Shown in the alert dialog")
+        alert.addButton(withTitle: NSLocalizedString("I'll quit the other app", comment: "Shown in the alert dialog"))
+        alert.addButton(withTitle: NSLocalizedString("Disable gamma control for my displays", comment: "Shown in the alert dialog"))
+        alert.alertStyle = NSAlert.Style.critical
+        if alert.runModal() != .alertFirstButtonReturn {
+          for otherDisplay in DisplayManager.shared.getOtherDisplays() {
+            _ = otherDisplay.setSwBrightness(1)
+            _ = otherDisplay.setDirectBrightness(1)
+            otherDisplay.savePref(true, key: .avoidGamma)
+            _ = otherDisplay.setSwBrightness(1)
+            DisplayManager.shared.gammaInterferenceWarningShown = false
+            DisplayManager.shared.gammaInterferenceCounter = 0
+            displaysPrefsVc?.loadDisplayList()
+          }
+        } else {
+          os_log("We won't watch for gamma table interference anymore", type: .info)
         }
-      } else {
-        os_log("We won't watch for gamma table interference anymore", type: .info)
       }
     }
   }
