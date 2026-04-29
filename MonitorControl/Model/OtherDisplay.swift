@@ -524,4 +524,123 @@ class OtherDisplay: Display {
   func combinedBrightnessSwitchingValue() -> Float {
     Float(self.readPrefAsInt(key: .combinedBrightnessSwitchingPoint) + 8) / 16
   }
+
+  // MARK: - DDC Capabilities Detection
+
+  /// Probe whether a specific VCP command is supported by attempting to read it
+  func probeDDCCommand(_ command: Command) -> Bool {
+    guard !self.isSw() else { return false }
+    let delay = self.readPrefAsBool(key: .longerDelay) ? UInt64(40 * kMillisecondScale) : nil
+    if let values = self.readDDCValues(for: command, tries: 1, minReplyDelay: delay) {
+      os_log("DDC probe for %{public}@: current=%{public}@, max=%{public}@", type: .info, String(reflecting: command), String(values.current), String(values.max))
+      return true
+    }
+    return false
+  }
+
+  /// Detect which DDC capabilities this display supports and store results in preferences
+  func detectCapabilities() {
+    guard !self.isSw(), !app.safeMode else { return }
+    os_log("Detecting DDC capabilities for %{public}@", type: .info, self.name)
+
+    // Commands to probe (only ones we provide UI for beyond brightness/volume/contrast)
+    let commandsToProbe: [(Command, PrefKey)] = [
+      (.inputSelect, .unavailableDDC),
+      (.powerMode, .unavailableDDC),
+      (.colorTemperatureRequest, .unavailableDDC),
+    ]
+
+    DisplayManager.shared.globalDDCQueue.async {
+      for (command, prefKey) in commandsToProbe {
+        // Only probe if not already manually configured by user
+        let manualKey = prefKey.rawValue + String(command.rawValue) + self.prefsId
+        guard !prefs.bool(forKey: PrefKey.isTouched.rawValue + String(command.rawValue) + self.prefsId) else {
+          os_log("Skipping probe for %{public}@ (manually configured)", type: .info, String(reflecting: command))
+          continue
+        }
+        let isSupported = self.probeDDCCommand(command)
+        self.savePref(!isSupported, key: prefKey, for: command)
+        os_log("DDC capability %{public}@: %{public}@", type: .info, String(reflecting: command), isSupported ? "supported" : "not supported")
+      }
+      DispatchQueue.main.async {
+        app.updateMenusAndKeys()
+      }
+    }
+  }
+
+  // MARK: - Input Source Switching (VCP 0x60)
+
+  /// Read the current input source from the display via DDC
+  func readInputSource() -> Command.InputSource? {
+    guard !self.isSw(), !self.readPrefAsBool(key: .unavailableDDC, for: .inputSelect) else {
+      return nil
+    }
+    let delay = self.readPrefAsBool(key: .longerDelay) ? UInt64(40 * kMillisecondScale) : nil
+    if let values = self.readDDCValues(for: .inputSelect, tries: UInt(max(self.pollingCount, 1)), minReplyDelay: delay) {
+      os_log("Read input source: current=%{public}@, max=%{public}@", type: .info, String(values.current), String(values.max))
+      return Command.InputSource(rawValue: values.current)
+    }
+    return nil
+  }
+
+  /// Switch the display to the specified input source
+  func setInputSource(_ input: Command.InputSource) {
+    guard !self.isSw() else { return }
+    os_log("Setting input source to %{public}@ (%{public}@) for %{public}@", type: .info, input.displayName, String(input.rawValue), self.name)
+    self.writeDDCValues(command: .inputSelect, value: input.rawValue)
+    self.savePref(Int(input.rawValue), key: .lastInputSource)
+  }
+
+  /// Get the last known input source from preferences
+  func getLastInputSource() -> Command.InputSource? {
+    let rawValue = self.readPrefAsInt(key: .lastInputSource)
+    guard rawValue > 0 else { return nil }
+    return Command.InputSource(rawValue: UInt16(rawValue))
+  }
+
+  // MARK: - Power Control (VCP 0xD6)
+
+  /// Set the power mode of the display via DDC
+  func setPowerMode(_ mode: Command.PowerMode) {
+    guard !self.isSw() else { return }
+    os_log("Setting power mode to %{public}@ (%{public}@) for %{public}@", type: .info, mode.displayName, String(mode.rawValue), self.name)
+    self.writeDDCValues(command: .powerMode, value: mode.rawValue)
+  }
+
+  /// Read the current power mode from the display via DDC
+  func readPowerMode() -> Command.PowerMode? {
+    guard !self.isSw(), !self.readPrefAsBool(key: .unavailableDDC, for: .powerMode) else {
+      return nil
+    }
+    let delay = self.readPrefAsBool(key: .longerDelay) ? UInt64(40 * kMillisecondScale) : nil
+    if let values = self.readDDCValues(for: .powerMode, tries: UInt(max(self.pollingCount, 1)), minReplyDelay: delay) {
+      return Command.PowerMode(rawValue: values.current)
+    }
+    return nil
+  }
+
+  // MARK: - Color Temperature Control (VCP 0x0C)
+
+  /// Set the color temperature of the display via DDC
+  /// The slider value (0.0-1.0) is mapped to DDC units by convValueToDDC.
+  /// The DDC range depends on the display's reported max for VCP 0x0C.
+  /// Typical monitors report a range mapping to ~3000K-10000K.
+  func setColorTemperature(_ value: Float) {
+    guard !self.isSw(), !self.readPrefAsBool(key: .unavailableDDC, for: .colorTemperatureRequest) else { return }
+    os_log("Setting color temperature to %{public}@ for %{public}@", type: .info, String(value), self.name)
+    self.writeDDCValues(command: .colorTemperatureRequest, value: self.convValueToDDC(for: .colorTemperatureRequest, from: value))
+    self.savePref(value, for: .colorTemperatureRequest)
+  }
+
+  /// Read the current color temperature from the display via DDC
+  func readColorTemperature() -> Float? {
+    guard !self.isSw(), !self.readPrefAsBool(key: .unavailableDDC, for: .colorTemperatureRequest) else {
+      return nil
+    }
+    let delay = self.readPrefAsBool(key: .longerDelay) ? UInt64(40 * kMillisecondScale) : nil
+    if let values = self.readDDCValues(for: .colorTemperatureRequest, tries: UInt(max(self.pollingCount, 1)), minReplyDelay: delay) {
+      return self.convDDCToValue(for: .colorTemperatureRequest, from: values.current)
+    }
+    return nil
+  }
 }

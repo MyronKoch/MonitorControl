@@ -227,6 +227,7 @@ class SliderHandler {
       case .audioSpeakerVolume: iconName = "speaker.wave.2.fill"
       case .brightness: iconName = "sun.max.fill"
       case .contrast: iconName = "circle.lefthalf.fill"
+      case .colorTemperatureRequest: iconName = "thermometer.medium"
       default: break
       }
       let icon = SliderHandler.ClickThroughImageView()

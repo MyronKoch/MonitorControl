@@ -63,10 +63,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     self.setPrefsBuildNumber()
     self.setDefaultPrefs()
     self.setMenu()
+    self.registerURLScheme()
     CGDisplayRegisterReconfigurationCallback({ _, _, _ in app.displayReconfigured() }, nil)
     self.configure(firstrun: true)
     DisplayManager.shared.createGammaActivityEnforcer()
     self.updaterController.startUpdater()
+  }
+
+  // MARK: - URL Scheme Handler
+
+  private func registerURLScheme() {
+    NSAppleEventManager.shared().setEventHandler(self, andSelector: #selector(handleURLEvent(_:withReplyEvent:)), forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL))
+  }
+
+  @objc func handleURLEvent(_ event: NSAppleEventDescriptor, withReplyEvent _: NSAppleEventDescriptor) {
+    guard let urlString = event.paramDescriptor(forKeyword: AEKeyword(keyDirectObject))?.stringValue,
+          let url = URL(string: urlString) else {
+      return
+    }
+    URLSchemeHandler.shared.handle(url: url)
   }
 
   @objc func quitClicked(_: AnyObject) {
@@ -89,6 +104,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
   func applicationWillTerminate(_: Notification) {
     os_log("Goodbye!", type: .info)
+    SleepPrevention.shared.release()
     DisplayManager.shared.resetSwBrightnessForAllDisplays(noPrefSave: true)
     self.updateStatusItemVisibility(true)
   }
@@ -112,8 +128,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     if !prefs.bool(forKey: PrefKey.appAlreadyLaunched.rawValue) {
       // Only settings that are not false, 0 or "" by default are set here. Assumes pre-wiped database.
       prefs.set(true, forKey: PrefKey.appAlreadyLaunched.rawValue)
-      prefs.set(true, forKey: PrefKey.SUEnableAutomaticChecks.rawValue)
+      prefs.set(false, forKey: PrefKey.SUEnableAutomaticChecks.rawValue)
     }
+    // Ensure automatic update checks are disabled regardless of previous setting
+    prefs.set(false, forKey: PrefKey.SUEnableAutomaticChecks.rawValue)
   }
 
   @objc func displayReconfigured() {
@@ -160,6 +178,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
           }
         }
         displaysPrefsVc?.loadDisplayList()
+        SleepPrevention.shared.update()
         self.job(start: true)
       }
     }

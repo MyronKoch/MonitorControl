@@ -39,6 +39,12 @@ enum PrefKey: String {
   // Show volume sliders
   case hideVolume
 
+  // Show color temperature slider
+  case showColorTemperature
+
+  // Prevent sleep while external display is connected
+  case preventSleepWhenDisplayConnected
+
   // Lower via software after brightness
   case disableCombinedBrightness
 
@@ -124,6 +130,9 @@ enum PrefKey: String {
 
   // Friendly name
   case friendlyName
+
+  // Last known input source for display
+  case lastInputSource
 
   /* -- Display+Command specific settings -- */
 

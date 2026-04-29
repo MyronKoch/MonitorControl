@@ -58,6 +58,24 @@
 		F06792F6200A745F0066C438 /* MonitorControlHelper.app in [Login] Copy Helper to start at Login */ = {isa = PBXBuildFile; fileRef = F06792E7200A73460066C438 /* MonitorControlHelper.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F0A489C4279C71B200BEDFD6 /* OnboardingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0A489C3279C71B200BEDFD6 /* OnboardingViewController.swift */; };
 		FE4E0896249D584C003A50BB /* OSDUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE4E0895249D584C003A50BB /* OSDUtils.swift */; };
+		6C43C69B39B4162A61B0F7C3 /* AppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AD3307E39B1A76D1CD1C1AF /* AppIntents.swift */; };
+		5AA063E5A66CF21F7D93F68A /* URLSchemeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C28E6566F721A4EBA0F1672D /* URLSchemeHandler.swift */; };
+		E9501CCEA9056A94C72E2A32 /* SleepPrevention.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D46DE50AAF5ABB14D7C3420 /* SleepPrevention.swift */; };
+		7B198293EB83694C54A2D175 /* RokuECP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AC29E5FB9657B9425A8B204 /* RokuECP.swift */; };
+		8064B94AD48DB78F23A023C1 /* ShortcutsBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98F8F39A8A7D758D70AEEEB9 /* ShortcutsBridge.swift */; };
+		4C1982E0AECA9C6C57828ED0 /* NightShiftExternal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 430F8A6F8010C15BF169961D /* NightShiftExternal.swift */; };
+		B20C718EE5F6BCAAA2B2EE39 /* DisplayModes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EDD1AAF55BDF66FABE2DFE6 /* DisplayModes.swift */; };
+		1403C818831033614195488E /* ColorProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3AC4F97B92D2AB1528DCE60 /* ColorProfileManager.swift */; };
+		D5B850B5D2D380E7EFA67C0C /* EDIDReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 817317B4464E4935B2BB98E3 /* EDIDReader.swift */; };
+		475EB2B7815DAC1A0DE8D4A0 /* HDRBrightness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B633668C2D8EDA96CA78BF7 /* HDRBrightness.swift */; };
+		FCBE05F35FC36693E263B9D1 /* ColorAdjustments.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE88DFD02855BF1DDD320919 /* ColorAdjustments.swift */; };
+		0220ACDD94AEC81FAF867DF7 /* VirtualDisplayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5619E7560F433137AF97C5E8 /* VirtualDisplayManager.swift */; };
+		24BE02CE62FD7699044F41A1 /* DisplayConnectionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81BD31567F5E3021C754A106 /* DisplayConnectionManager.swift */; };
+		F12AF58BBC16281BAC0F4C88 /* EDIDOverride.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BA2317A83128DFD9C349B7F /* EDIDOverride.swift */; };
+		CDD8171808A7042D076A4DCB /* LayoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D85FF20CFA598EF8D8F455C1 /* LayoutManager.swift */; };
+		E7536067253457D5C9D5FC1B /* DisplaySyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF9C64ABA8782686570AC3CF /* DisplaySyncEngine.swift */; };
+		53E85F5931B6D41B671FA6CB /* PictureInPicture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93FADCC08AB01E946CD95FF6 /* PictureInPicture.swift */; };
+		C1856407E278425F6CEB082F /* VideoFilters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81583B4BBD63F4F9C786F0D7 /* VideoFilters.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -181,6 +199,24 @@
 		FB5DB28F2AD54C4600306223 /* pt-PT */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "pt-PT"; path = "pt-PT.lproj/InternetAccessPolicy.strings"; sourceTree = "<group>"; };
 		FB5DB2902AD54C4600306223 /* pt-PT */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "pt-PT"; path = "pt-PT.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		FE4E0895249D584C003A50BB /* OSDUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OSDUtils.swift; sourceTree = "<group>"; };
+		9AD3307E39B1A76D1CD1C1AF /* AppIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIntents.swift; sourceTree = "<group>"; };
+		C28E6566F721A4EBA0F1672D /* URLSchemeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLSchemeHandler.swift; sourceTree = "<group>"; };
+		4D46DE50AAF5ABB14D7C3420 /* SleepPrevention.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepPrevention.swift; sourceTree = "<group>"; };
+		0AC29E5FB9657B9425A8B204 /* RokuECP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RokuECP.swift; sourceTree = "<group>"; };
+		98F8F39A8A7D758D70AEEEB9 /* ShortcutsBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsBridge.swift; sourceTree = "<group>"; };
+		430F8A6F8010C15BF169961D /* NightShiftExternal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightShiftExternal.swift; sourceTree = "<group>"; };
+		1EDD1AAF55BDF66FABE2DFE6 /* DisplayModes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayModes.swift; sourceTree = "<group>"; };
+		F3AC4F97B92D2AB1528DCE60 /* ColorProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorProfileManager.swift; sourceTree = "<group>"; };
+		817317B4464E4935B2BB98E3 /* EDIDReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EDIDReader.swift; sourceTree = "<group>"; };
+		7B633668C2D8EDA96CA78BF7 /* HDRBrightness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HDRBrightness.swift; sourceTree = "<group>"; };
+		BE88DFD02855BF1DDD320919 /* ColorAdjustments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorAdjustments.swift; sourceTree = "<group>"; };
+		5619E7560F433137AF97C5E8 /* VirtualDisplayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualDisplayManager.swift; sourceTree = "<group>"; };
+		81BD31567F5E3021C754A106 /* DisplayConnectionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayConnectionManager.swift; sourceTree = "<group>"; };
+		5BA2317A83128DFD9C349B7F /* EDIDOverride.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EDIDOverride.swift; sourceTree = "<group>"; };
+		D85FF20CFA598EF8D8F455C1 /* LayoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutManager.swift; sourceTree = "<group>"; };
+		EF9C64ABA8782686570AC3CF /* DisplaySyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplaySyncEngine.swift; sourceTree = "<group>"; };
+		93FADCC08AB01E946CD95FF6 /* PictureInPicture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PictureInPicture.swift; sourceTree = "<group>"; };
+		81583B4BBD63F4F9C786F0D7 /* VideoFilters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoFilters.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -308,6 +344,24 @@
 			children = (
 				F01B0685228221B6008E64DB /* Bridging-Header.h */,
 				AA99521626FE25AB00612E07 /* AppDelegate.swift */,
+				81583B4BBD63F4F9C786F0D7 /* VideoFilters.swift */,
+				93FADCC08AB01E946CD95FF6 /* PictureInPicture.swift */,
+				EF9C64ABA8782686570AC3CF /* DisplaySyncEngine.swift */,
+				D85FF20CFA598EF8D8F455C1 /* LayoutManager.swift */,
+				5BA2317A83128DFD9C349B7F /* EDIDOverride.swift */,
+				81BD31567F5E3021C754A106 /* DisplayConnectionManager.swift */,
+				5619E7560F433137AF97C5E8 /* VirtualDisplayManager.swift */,
+				BE88DFD02855BF1DDD320919 /* ColorAdjustments.swift */,
+				7B633668C2D8EDA96CA78BF7 /* HDRBrightness.swift */,
+				817317B4464E4935B2BB98E3 /* EDIDReader.swift */,
+				F3AC4F97B92D2AB1528DCE60 /* ColorProfileManager.swift */,
+				1EDD1AAF55BDF66FABE2DFE6 /* DisplayModes.swift */,
+				430F8A6F8010C15BF169961D /* NightShiftExternal.swift */,
+				98F8F39A8A7D758D70AEEEB9 /* ShortcutsBridge.swift */,
+				0AC29E5FB9657B9425A8B204 /* RokuECP.swift */,
+				4D46DE50AAF5ABB14D7C3420 /* SleepPrevention.swift */,
+				9AD3307E39B1A76D1CD1C1AF /* AppIntents.swift */,
+				C28E6566F721A4EBA0F1672D /* URLSchemeHandler.swift */,
 				AA78BDBC2709FE7B00CA8DF7 /* UpdaterDelegate.swift */,
 				AA99521826FE49A300612E07 /* MenuHandler.swift */,
 				F01B068F228221B7008E64DB /* SliderHandler.swift */,
@@ -639,6 +693,24 @@
 				F0445D3820023E710025AE82 /* MainPrefsViewController.swift in Sources */,
 				28D1DDF2227FBE71004CB494 /* NSScreen+Extension.swift in Sources */,
 				AA99521726FE25AB00612E07 /* AppDelegate.swift in Sources */,
+				C1856407E278425F6CEB082F /* VideoFilters.swift in Sources */,
+				53E85F5931B6D41B671FA6CB /* PictureInPicture.swift in Sources */,
+				E7536067253457D5C9D5FC1B /* DisplaySyncEngine.swift in Sources */,
+				CDD8171808A7042D076A4DCB /* LayoutManager.swift in Sources */,
+				F12AF58BBC16281BAC0F4C88 /* EDIDOverride.swift in Sources */,
+				24BE02CE62FD7699044F41A1 /* DisplayConnectionManager.swift in Sources */,
+				0220ACDD94AEC81FAF867DF7 /* VirtualDisplayManager.swift in Sources */,
+				FCBE05F35FC36693E263B9D1 /* ColorAdjustments.swift in Sources */,
+				475EB2B7815DAC1A0DE8D4A0 /* HDRBrightness.swift in Sources */,
+				D5B850B5D2D380E7EFA67C0C /* EDIDReader.swift in Sources */,
+				1403C818831033614195488E /* ColorProfileManager.swift in Sources */,
+				B20C718EE5F6BCAAA2B2EE39 /* DisplayModes.swift in Sources */,
+				4C1982E0AECA9C6C57828ED0 /* NightShiftExternal.swift in Sources */,
+				8064B94AD48DB78F23A023C1 /* ShortcutsBridge.swift in Sources */,
+				7B198293EB83694C54A2D175 /* RokuECP.swift in Sources */,
+				E9501CCEA9056A94C72E2A32 /* SleepPrevention.swift in Sources */,
+				5AA063E5A66CF21F7D93F68A /* URLSchemeHandler.swift in Sources */,
+				6C43C69B39B4162A61B0F7C3 /* AppIntents.swift in Sources */,
 				AA25F6D126E681D30087F3A2 /* KeyboardPrefsViewController.swift in Sources */,
 				F01B069F228221B7008E64DB /* SliderHandler.swift in Sources */,
 				AACE5E2327050C63006C2A48 /* NSNotification+Extension.swift in Sources */,
@@ -873,25 +945,23 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/**",
-					"/System/Library/PrivateFrameworks/**",
+					"/System/Library/PrivateFrameworks/OSD.framework/..",
+					"/System/Library/PrivateFrameworks/DisplayServices.framework/..",
 				);
 				INFOPLIST_FILE = MonitorControl/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 4.3.2;
 				PRODUCT_BUNDLE_IDENTIFIER = app.monitorcontrol.MonitorControl;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) ENABLE_APP_INTENTS";
 				SWIFT_OBJC_BRIDGING_HEADER = "MonitorControl/Support/Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.5;
-				SYSTEM_FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks",
-				);
 			};
 			name = Debug;
 		};
@@ -910,25 +980,23 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(PROJECT_DIR)/**",
-					"/System/Library/PrivateFrameworks/**",
+					"/System/Library/PrivateFrameworks/OSD.framework/..",
+					"/System/Library/PrivateFrameworks/DisplayServices.framework/..",
 				);
 				INFOPLIST_FILE = MonitorControl/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 4.3.2;
 				PRODUCT_BUNDLE_IDENTIFIER = app.monitorcontrol.MonitorControl;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) ENABLE_APP_INTENTS";
 				SWIFT_OBJC_BRIDGING_HEADER = "MonitorControl/Support/Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.5;
-				SYSTEM_FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks",
-				);
 			};
 			name = Release;
 		};

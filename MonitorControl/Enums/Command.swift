@@ -1,5 +1,7 @@
 //  Copyright © MonitorControl. @JoniVR, @theOneyouseek, @waydabber and others
 
+import Foundation
+
 enum Command: UInt8 {
   case none = 0
 
@@ -169,4 +171,81 @@ enum Command: UInt8 {
   case bottomRightScreenPurity = 0xEB
 
   public static let brightness = luminance
+
+  // MARK: - Input Source Values for VCP 0x60 (inputSelect)
+
+  /// Standard MCCS input source values for DDC input switching
+  enum InputSource: UInt16, CaseIterable {
+    case vga1 = 1
+    case vga2 = 2
+    case dvi1 = 3
+    case dvi2 = 4
+    case composite1 = 5
+    case composite2 = 6
+    case sVideo1 = 7
+    case sVideo2 = 8
+    case tuner1 = 9
+    case tuner2 = 10
+    case tuner3 = 11
+    case component1 = 12
+    case component2 = 13
+    case component3 = 14
+    case displayPort1 = 15
+    case displayPort2 = 16
+    case hdmi1 = 17
+    case hdmi2 = 18
+    case usbC1 = 19
+    case usbC2 = 20
+
+    var displayName: String {
+      switch self {
+      case .vga1: return "VGA 1"
+      case .vga2: return "VGA 2"
+      case .dvi1: return "DVI 1"
+      case .dvi2: return "DVI 2"
+      case .composite1: return "Composite 1"
+      case .composite2: return "Composite 2"
+      case .sVideo1: return "S-Video 1"
+      case .sVideo2: return "S-Video 2"
+      case .tuner1: return "Tuner 1"
+      case .tuner2: return "Tuner 2"
+      case .tuner3: return "Tuner 3"
+      case .component1: return "Component 1"
+      case .component2: return "Component 2"
+      case .component3: return "Component 3"
+      case .displayPort1: return "DisplayPort 1"
+      case .displayPort2: return "DisplayPort 2"
+      case .hdmi1: return "HDMI 1"
+      case .hdmi2: return "HDMI 2"
+      case .usbC1: return "USB-C 1"
+      case .usbC2: return "USB-C 2"
+      }
+    }
+
+    /// The most commonly used input sources for modern displays
+    static var common: [InputSource] {
+      [.hdmi1, .hdmi2, .displayPort1, .displayPort2, .usbC1, .usbC2, .dvi1, .vga1]
+    }
+  }
+
+  // MARK: - Power Mode Values for VCP 0xD6
+
+  /// Standard MCCS power mode values for DDC power control
+  enum PowerMode: UInt16 {
+    case on = 1
+    case standby = 2
+    case suspend = 3
+    case off = 4
+    case offHardButton = 5
+
+    var displayName: String {
+      switch self {
+      case .on: return NSLocalizedString("On", comment: "Power mode")
+      case .standby: return NSLocalizedString("Standby", comment: "Power mode")
+      case .suspend: return NSLocalizedString("Suspend", comment: "Power mode")
+      case .off: return NSLocalizedString("Off (soft)", comment: "Power mode")
+      case .offHardButton: return NSLocalizedString("Off (hard)", comment: "Power mode")
+      }
+    }
+  }
 }
