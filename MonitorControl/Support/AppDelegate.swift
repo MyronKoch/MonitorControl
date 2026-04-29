@@ -27,6 +27,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   var safeMode = false
   var jobRunning = false
   var startupActionWriteCounter: Int = 0
+  var configureID: Int = 0 // dispatched async configure task ID
   var audioPlayer: AVAudioPlayer?
   let updaterController = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: UpdaterDelegate(), userDriverDelegate: nil)
 
@@ -137,6 +138,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     os_log("Request for configuration with reconfigreID %{public}@", type: .info, String(dispatchedReconfigureID))
     self.reconfigureID = 0
+    self.configureID += 1
+    let dispatchedConfigureID = self.configureID
     DisplayManager.shared.gammaInterferenceCounter = 0
     DisplayManager.shared.configureDisplays()
     DisplayManager.shared.addDisplayCounterSuffixes()
@@ -144,15 +147,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     if firstrun && prefs.integer(forKey: PrefKey.startupAction.rawValue) != StartupAction.write.rawValue {
       DisplayManager.shared.resetSwBrightnessForAllDisplays(prefsOnly: true)
     }
-    DisplayManager.shared.setupOtherDisplays(firstrun: firstrun)
-    self.updateMenusAndKeys()
-    if !firstrun || prefs.integer(forKey: PrefKey.startupAction.rawValue) == StartupAction.write.rawValue {
-      if !prefs.bool(forKey: PrefKey.disableCombinedBrightness.rawValue) {
-        DisplayManager.shared.restoreSwBrightnessForAllDisplays(async: !prefs.bool(forKey: PrefKey.disableSmoothBrightness.rawValue))
+    DispatchQueue.global(qos: .userInitiated).async {
+      DisplayManager.shared.setupOtherDisplays(firstrun: firstrun)
+      DispatchQueue.main.async {
+        guard self.sleepID == 0, self.reconfigureID == 0, self.configureID == dispatchedConfigureID else {
+          return
+        }
+        self.updateMenusAndKeys()
+        if !firstrun || prefs.integer(forKey: PrefKey.startupAction.rawValue) == StartupAction.write.rawValue {
+          if !prefs.bool(forKey: PrefKey.disableCombinedBrightness.rawValue) {
+            DisplayManager.shared.restoreSwBrightnessForAllDisplays(async: !prefs.bool(forKey: PrefKey.disableSmoothBrightness.rawValue))
+          }
+        }
+        displaysPrefsVc?.loadDisplayList()
+        self.job(start: true)
       }
     }
-    displaysPrefsVc?.loadDisplayList()
-    self.job(start: true)
   }
 
   func updateMenusAndKeys() {
@@ -298,22 +308,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func setStartAtLogin(enabled: Bool) {
-    let identifier = "\(Bundle.main.bundleIdentifier!)Helper" as CFString
-    SMLoginItemSetEnabled(identifier, enabled)
+    if #available(macOS 13.0, *) {
+      let service = SMAppService.loginItem(identifier: "\(Bundle.main.bundleIdentifier!)Helper")
+      do {
+        if enabled {
+          try service.register()
+        } else {
+          try service.unregister()
+        }
+      } catch {
+        os_log("Failed to update login item state: %{public}@", type: .error, error.localizedDescription)
+      }
+    } else {
+      let identifier = "\(Bundle.main.bundleIdentifier!)Helper" as CFString
+      SMLoginItemSetEnabled(identifier, enabled)
+    }
   }
 
-  func getSystemSettings() -> [String: AnyObject]? {
-    var propertyListFormat = PropertyListSerialization.PropertyListFormat.xml
-    let plistPath = NSString(string: "~/Library/Preferences/.GlobalPreferences.plist").expandingTildeInPath
-    guard let plistXML = FileManager.default.contents(atPath: plistPath) else {
-      return nil
-    }
-    do {
-      return try PropertyListSerialization.propertyList(from: plistXML, options: .mutableContainersAndLeaves, format: &propertyListFormat) as? [String: AnyObject]
-    } catch {
-      os_log("Error reading system prefs plist: %{public}@", type: .info, error.localizedDescription)
-      return nil
-    }
+  func getSystemSettings() -> [String: Any]? {
+    UserDefaults.standard.persistentDomain(forName: ".GlobalPreferences")
   }
 
   func macOS10() -> Bool {

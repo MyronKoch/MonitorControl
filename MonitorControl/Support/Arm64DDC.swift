@@ -174,9 +174,22 @@ class Arm64DDC: NSObject {
       name.deallocate()
     }
     while true {
+      if preceedingEntry != IO_OBJECT_NULL {
+        IOObjectRelease(preceedingEntry)
+      }
       preceedingEntry = entry
       entry = IOIteratorNext(iterator)
-      guard IORegistryEntryGetName(entry, name) == KERN_SUCCESS, entry != MACH_PORT_NULL else {
+      guard entry != MACH_PORT_NULL else {
+        if preceedingEntry != IO_OBJECT_NULL {
+          IOObjectRelease(preceedingEntry)
+        }
+        break
+      }
+      guard IORegistryEntryGetName(entry, name) == KERN_SUCCESS else {
+        IOObjectRelease(entry)
+        if preceedingEntry != IO_OBJECT_NULL {
+          IOObjectRelease(preceedingEntry)
+        }
         break
       }
       let nameString = String(cString: name)
@@ -235,7 +248,13 @@ class Arm64DDC: NSObject {
   static func getIoregServicesForMatching() -> [IOregService] {
     var serviceLocation = 0
     var ioregServicesForMatching: [IOregService] = []
-    let ioregRoot: io_registry_entry_t = IORegistryGetRootEntry(kIOMasterPortDefault)
+    let mainPortDefault: mach_port_t
+    if #available(macOS 12.0, *) {
+      mainPortDefault = kIOMainPortDefault
+    } else {
+      mainPortDefault = kIOMasterPortDefault
+    }
+    let ioregRoot: io_registry_entry_t = IORegistryGetRootEntry(mainPortDefault)
     defer {
       IOObjectRelease(ioregRoot)
     }
@@ -252,6 +271,14 @@ class Arm64DDC: NSObject {
     while true {
       guard let objectOfInterest = ioregIterateToNextObjectOfInterest(interests: [keyDCPAVServiceProxy] + keysFramebuffer, iterator: &iterator) else {
         break
+      }
+      defer {
+        if objectOfInterest.preceedingEntry != IO_OBJECT_NULL {
+          IOObjectRelease(objectOfInterest.preceedingEntry)
+        }
+        if objectOfInterest.entry != IO_OBJECT_NULL {
+          IOObjectRelease(objectOfInterest.entry)
+        }
       }
       if keysFramebuffer.contains(objectOfInterest.name) {
         ioregService = self.getIORegServiceAppleCDC2Properties(entry: objectOfInterest.entry)

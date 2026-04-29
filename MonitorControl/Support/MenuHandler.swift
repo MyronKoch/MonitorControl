@@ -48,12 +48,10 @@ class MenuHandler: NSMenu, NSMenuDelegate {
     app.updateStatusItemVisibility(showIcon)
     self.clearMenu()
     let currentDisplay = DisplayManager.shared.getCurrentDisplay()
-    var displays: [Display] = []
-    if !prefs.bool(forKey: PrefKey.hideAppleFromMenu.rawValue) {
-      displays.append(contentsOf: DisplayManager.shared.getAppleDisplays())
+    var displays = DisplayManager.shared.sortDisplaysByFriendlyName()
+    if prefs.bool(forKey: PrefKey.hideAppleFromMenu.rawValue) {
+      displays.removeAll { $0 is AppleDisplay }
     }
-    displays.append(contentsOf: DisplayManager.shared.getOtherDisplays())
-    displays = DisplayManager.shared.sortDisplaysByFriendlyName()
     let relevant = prefs.integer(forKey: PrefKey.multiSliders.rawValue) == MultiSliders.relevant.rawValue
     let combine = prefs.integer(forKey: PrefKey.multiSliders.rawValue) == MultiSliders.combine.rawValue
     let numOfDisplays = displays.filter { !$0.isDummy }.count
