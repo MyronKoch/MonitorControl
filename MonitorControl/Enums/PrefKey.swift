@@ -102,6 +102,9 @@ enum PrefKey: String {
   // Dimming paused state
   case dimmingPaused
 
+  // Pre-pause brightness (per-display)
+  case prePauseBrightness
+
   /* -- Display specific settings */
 
   // Enable mute DDC for display

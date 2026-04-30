@@ -627,13 +627,16 @@ class MenuHandler: NSMenu, NSMenuDelegate {
     if wasPaused {
       prefs.set(false, forKey: PrefKey.dimmingPaused.rawValue)
       for display in self.brightnessControllableDisplays() {
-        let savedValue = display.readPrefAsFloat(for: .brightness)
+        let savedValue = display.readPrefAsFloat(key: .prePauseBrightness)
         _ = display.setBrightness(savedValue)
         if let slider = display.sliderHandler[.brightness] {
           slider.setValue(savedValue, displayID: display.identifier)
         }
       }
     } else {
+      for display in self.brightnessControllableDisplays() {
+        display.savePref(display.getBrightness(), key: .prePauseBrightness)
+      }
       prefs.set(true, forKey: PrefKey.dimmingPaused.rawValue)
       for display in self.brightnessControllableDisplays() {
         _ = display.setDirectBrightness(1)
