@@ -74,6 +74,12 @@ enum DisplayActions {
 
   @MainActor
   static func setBrightness(_ value: Float, on displays: [OtherDisplay]) {
+    if prefs.bool(forKey: PrefKey.masterBrightnessLocked.rawValue) {
+      prefs.set(value, forKey: PrefKey.masterBrightnessValue.rawValue)
+      menu.masterBrightnessSliderHandler?.setValue(value)
+      menu.applyMasterBrightness(value: value)
+      return
+    }
     for display in displays {
       _ = display.setBrightness(value)
       display.savePref(value, for: .brightness)
