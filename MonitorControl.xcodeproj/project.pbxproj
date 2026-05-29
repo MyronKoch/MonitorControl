@@ -62,6 +62,7 @@
 		5AA063E5A66CF21F7D93F68A /* URLSchemeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C28E6566F721A4EBA0F1672D /* URLSchemeHandler.swift */; };
 		E9501CCEA9056A94C72E2A32 /* SleepPrevention.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D46DE50AAF5ABB14D7C3420 /* SleepPrevention.swift */; };
 		7B198293EB83694C54A2D175 /* RokuECP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AC29E5FB9657B9425A8B204 /* RokuECP.swift */; };
+		A1B2C3D4E5F60718293A4B5C /* BrightnessNetwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6071829A1B2C3A4B5C6 /* BrightnessNetwork.swift */; };
 		8064B94AD48DB78F23A023C1 /* ShortcutsBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98F8F39A8A7D758D70AEEEB9 /* ShortcutsBridge.swift */; };
 		4C1982E0AECA9C6C57828ED0 /* NightShiftExternal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 430F8A6F8010C15BF169961D /* NightShiftExternal.swift */; };
 		B20C718EE5F6BCAAA2B2EE39 /* DisplayModes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EDD1AAF55BDF66FABE2DFE6 /* DisplayModes.swift */; };
@@ -203,6 +204,7 @@
 		C28E6566F721A4EBA0F1672D /* URLSchemeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLSchemeHandler.swift; sourceTree = "<group>"; };
 		4D46DE50AAF5ABB14D7C3420 /* SleepPrevention.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepPrevention.swift; sourceTree = "<group>"; };
 		0AC29E5FB9657B9425A8B204 /* RokuECP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RokuECP.swift; sourceTree = "<group>"; };
+		D4E5F6071829A1B2C3A4B5C6 /* BrightnessNetwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrightnessNetwork.swift; sourceTree = "<group>"; };
 		98F8F39A8A7D758D70AEEEB9 /* ShortcutsBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsBridge.swift; sourceTree = "<group>"; };
 		430F8A6F8010C15BF169961D /* NightShiftExternal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightShiftExternal.swift; sourceTree = "<group>"; };
 		1EDD1AAF55BDF66FABE2DFE6 /* DisplayModes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayModes.swift; sourceTree = "<group>"; };
@@ -359,6 +361,7 @@
 				430F8A6F8010C15BF169961D /* NightShiftExternal.swift */,
 				98F8F39A8A7D758D70AEEEB9 /* ShortcutsBridge.swift */,
 				0AC29E5FB9657B9425A8B204 /* RokuECP.swift */,
+				D4E5F6071829A1B2C3A4B5C6 /* BrightnessNetwork.swift */,
 				4D46DE50AAF5ABB14D7C3420 /* SleepPrevention.swift */,
 				9AD3307E39B1A76D1CD1C1AF /* AppIntents.swift */,
 				C28E6566F721A4EBA0F1672D /* URLSchemeHandler.swift */,
@@ -708,6 +711,7 @@
 				4C1982E0AECA9C6C57828ED0 /* NightShiftExternal.swift in Sources */,
 				8064B94AD48DB78F23A023C1 /* ShortcutsBridge.swift in Sources */,
 				7B198293EB83694C54A2D175 /* RokuECP.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5C /* BrightnessNetwork.swift in Sources */,
 				E9501CCEA9056A94C72E2A32 /* SleepPrevention.swift in Sources */,
 				5AA063E5A66CF21F7D93F68A /* URLSchemeHandler.swift in Sources */,
 				6C43C69B39B4162A61B0F7C3 /* AppIntents.swift in Sources */,

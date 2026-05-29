@@ -598,6 +598,7 @@ class MenuHandler: NSMenu, NSMenuDelegate {
     prefs.set(value, forKey: PrefKey.masterBrightnessValue.rawValue)
     self.masterBrightnessSliderHandler?.setValue(value)
     self.applyMasterBrightness(value: value)
+    BrightnessNetworkManager.shared.broadcastMasterBrightness(value)
   }
 
   @objc func lockMasterBrightnessLevels(_: AnyObject) {
