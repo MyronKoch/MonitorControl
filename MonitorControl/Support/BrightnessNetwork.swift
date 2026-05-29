@@ -21,10 +21,30 @@ class BrightnessNetworkManager: NSObject, NetServiceBrowserDelegate, NetServiceD
   private var suppressBroadcast = false
   private var inputBuffers: [String: Data] = [:]
 
+  private var knownPeerNames: Set<String> = []
+
   func start() {
     startServer()
     startDiscovery()
+    startReconnectTimer()
     os_log("BrightnessNetwork: started (hostID=%{public}@, port=%{public}d)", type: .info, hostID, BRIGHTNESS_NETWORK_PORT)
+  }
+
+  private func startReconnectTimer() {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in
+      self?.reconnectDroppedPeers()
+      self?.startReconnectTimer()
+    }
+  }
+
+  private func reconnectDroppedPeers() {
+    for name in knownPeerNames where peerStreams["peer-\(name)"] == nil {
+      os_log("BrightnessNetwork: attempting reconnect to %{public}@", type: .info, name)
+      let service = NetService(domain: BRIGHTNESS_SERVICE_DOMAIN, type: BRIGHTNESS_SERVICE_TYPE, name: name)
+      resolving.append(service)
+      service.delegate = self
+      service.resolve(withTimeout: 5.0)
+    }
   }
 
   // MARK: - Server (POSIX socket)
@@ -122,6 +142,8 @@ class BrightnessNetworkManager: NSObject, NetServiceBrowserDelegate, NetServiceD
   func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
     if service.name == (Host.current().localizedName ?? "Mac") { return }
     os_log("BrightnessNetwork: found peer %{public}@", type: .info, service.name)
+    knownPeerNames.insert(service.name)
+    guard peerStreams["peer-\(service.name)"] == nil else { return }
     resolving.append(service)
     service.delegate = self
     service.resolve(withTimeout: 5.0)
