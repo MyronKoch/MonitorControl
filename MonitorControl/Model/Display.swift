@@ -238,9 +238,7 @@ class Display: Equatable {
             let gammaTableRed = self.defaultGammaTableRed.map { $0 * transientValue }
             let gammaTableGreen = self.defaultGammaTableGreen.map { $0 * transientValue }
             let gammaTableBlue = self.defaultGammaTableBlue.map { $0 * transientValue }
-            DispatchQueue.main.sync {
-              CGSetDisplayTransferByTable(self.identifier, self.defaultGammaTableSampleCount, gammaTableRed, gammaTableGreen, gammaTableBlue)
-            }
+            CGSetDisplayTransferByTable(self.identifier, self.defaultGammaTableSampleCount, gammaTableRed, gammaTableGreen, gammaTableBlue)
           }
           Thread.sleep(forTimeInterval: 0.001) // Let's make things quick if not performed in the background
         }

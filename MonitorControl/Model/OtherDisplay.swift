@@ -401,24 +401,25 @@ class OtherDisplay: Display {
       controlCodes.append(command.rawValue)
     }
     var writeAttempted = false
-    var writeSucceeded = true
+    var allSucceeded = true
     for controlCode in controlCodes {
       if Arm64DDC.isArm64 {
         if self.arm64ddc {
           writeAttempted = true
-          writeSucceeded = Arm64DDC.write(service: self.arm64avService, command: controlCode, value: value)
+          if !Arm64DDC.write(service: self.arm64avService, command: controlCode, value: value) {
+            allSucceeded = false
+          }
         }
       } else {
         if self.ddc != nil {
           writeAttempted = true
-          writeSucceeded = self.ddc?.write(command: controlCode, value: value, errorRecoveryWaitTime: 2000) ?? false
+          if !(self.ddc?.write(command: controlCode, value: value, errorRecoveryWaitTime: 2000) ?? false) {
+            allSucceeded = false
+          }
         }
       }
-      if writeAttempted, !writeSucceeded {
-        break
-      }
     }
-    if writeAttempted, writeSucceeded {
+    if writeAttempted, allSucceeded {
       self.writeDDCQueue.async(flags: .barrier) {
         self.writeDDCLastSavedValue[command] = value
         self.savePref(true, key: PrefKey.isTouched, for: command)

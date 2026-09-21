@@ -360,7 +360,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func getSystemSettings() -> [String: Any]? {
-    UserDefaults.standard.persistentDomain(forName: ".GlobalPreferences")
+    UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain)
   }
 
   func macOS10() -> Bool {
